@@ -49,8 +49,7 @@ Plataforma para crear y destruir runners self-hosted de GitHub Actions de forma 
 
 3. **Desplegar**:
    ```bash
-   chmod +x deploy-registry.sh
-   ./deploy-registry.sh
+   python3 deploy_registry.py
    ```
 
 ### Opción 2: Build local
@@ -68,7 +67,7 @@ Plataforma para crear y destruir runners self-hosted de GitHub Actions de forma 
 
 3. **Desplegar**:
    ```bash
-   ./deploy-registry.sh
+   python3 deploy_registry.py
    ```
 
 ## Configuración
@@ -146,19 +145,25 @@ Una vez desplegado, visita:
 
 ```bash
 # Ver estado de los servicios
-./deploy.sh status
+python3 deploy_registry.py status
 
 # Ver logs en tiempo real
-./deploy.sh logs
+python3 deploy_registry.py logs
 
 # Verificar salud de los servicios
-./deploy.sh health
+python3 deploy_registry.py health
 
 # Reiniciar servicios
-./deploy.sh restart
+python3 deploy_registry.py restart
+
+# Actualizar imágenes del registry
+python3 deploy_registry.py pull
 
 # Detener todos los servicios
-./deploy.sh stop
+python3 deploy_registry.py stop
+
+# Verificar imágenes locales
+python3 deploy_registry.py verify
 ```
 
 ## Flujo de Ejecución

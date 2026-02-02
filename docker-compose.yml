@@ -49,6 +49,3 @@ services:
 networks:
   gha-network:
     driver: bridge
-
-volumes:
-  docker-socket:

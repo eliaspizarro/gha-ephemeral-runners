@@ -1,2 +1,0 @@
-# Dependencias para el script de build y push
-# Python 3.11+ requerido
