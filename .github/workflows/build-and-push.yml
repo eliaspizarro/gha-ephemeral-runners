@@ -1,0 +1,66 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      cleanup:
+        description: 'Cleanup images after build'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: your-registry.com
+  USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+  PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # El script no tiene dependencias externas, usa subprocess nativo
+    
+    - name: Login to Registry
+      run: |
+        echo ${{ env.PASSWORD }} | docker login ${{ env.REGISTRY }} --username ${{ env.USERNAME }} --password-stdin
+    
+    - name: Build and push images
+      run: |
+        python build_and_push.py \
+          --registry ${{ env.REGISTRY }} \
+          --username ${{ env.USERNAME }} \
+          --password ${{ env.PASSWORD }} \
+          ${{ github.event.inputs.cleanup == 'true' && '--cleanup' || '' }}
+    
+    - name: Verify images
+      run: |
+        python build_and_push.py --registry ${{ env.REGISTRY }} --verify-only
+    
+    - name: Summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Registry: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Images built:" >> $GITHUB_STEP_SUMMARY
+        echo "  - ${{ env.REGISTRY }}/gha-runner:latest" >> $GITHUB_STEP_SUMMARY
+        echo "  - ${{ env.REGISTRY }}/gha-orchestrator:latest" >> $GITHUB_STEP_SUMMARY
+        echo "  - ${{ env.REGISTRY }}/gha-api-gateway:latest" >> $GITHUB_STEP_SUMMARY

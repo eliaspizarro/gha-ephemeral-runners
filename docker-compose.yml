@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    image: your-registry.com/gha-api-gateway:latest
+    container_name: gha-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - API_KEY=${API_KEY:-}
+      - ENABLE_AUTH=${ENABLE_AUTH:-false}
+      - MAX_REQUESTS=${MAX_REQUESTS:-100}
+      - RATE_WINDOW=${RATE_WINDOW:-60}
+    depends_on:
+      - orchestrator
+    networks:
+      - gha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Orquestador
+  orchestrator:
+    image: your-registry.com/gha-orchestrator:latest
+    container_name: gha-orchestrator
+    environment:
+      - PORT=8000
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - RUNNER_IMAGE=${RUNNER_IMAGE:-your-registry.com/gha-runner:latest}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - gha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  gha-network:
+    driver: bridge
+
+volumes:
+  docker-socket:
