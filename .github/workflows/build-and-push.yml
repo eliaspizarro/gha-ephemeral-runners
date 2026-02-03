@@ -50,22 +50,10 @@ jobs:
         provenance: false
         sbom: false
     
-    - name: Verify images exist
-      uses: cloudposse/github-action-docker-image-exists@main
-      with:
-        registry: ${{ vars.REGISTRY }}
-        organization: ${{ github.repository_owner }}
-        repository: gha-orchestrator
-        tag: ${{ github.ref_name }}
-        login: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+    - name: Verify orchestrator image exists
+      run: |
+        docker pull ${{ vars.REGISTRY }}/gha-orchestrator:${{ github.ref_name }} && echo "Image exists" || (echo "Image not found" && exit 1)
     
     - name: Verify api-gateway image exists
-      uses: cloudposse/github-action-docker-image-exists@main
-      with:
-        registry: ${{ vars.REGISTRY }}
-        organization: ${{ github.repository_owner }}
-        repository: gha-api-gateway
-        tag: ${{ github.ref_name }}
-        login: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+      run: |
+        docker pull ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }} && echo "Image exists" || (echo "Image not found" && exit 1)
