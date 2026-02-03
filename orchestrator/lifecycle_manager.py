@@ -4,8 +4,8 @@ import logging
 import threading
 from typing import Dict, List, Optional
 from docker.models.containers import Container
-from .token_generator import TokenGenerator
-from .container_manager import ContainerManager
+from token_generator import TokenGenerator
+from container_manager import ContainerManager
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from .lifecycle_manager import LifecycleManager
+from lifecycle_manager import LifecycleManager
 
 # Configuración de logging
 logging.basicConfig(
