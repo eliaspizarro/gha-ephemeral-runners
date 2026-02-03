@@ -11,14 +11,8 @@ on:
         required: false
         default: false
         type: boolean
-      deploy_after:
-        description: 'Deploy after build (requires environment setup)'
-        required: false
-        default: false
-        type: boolean
 
 env:
-  REGISTRY: your-registry.com
   USERNAME: ${{ secrets.REGISTRY_USERNAME }}
   PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
@@ -32,6 +26,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+    
+    - name: Set Registry
+      run: |
+        echo "REGISTRY=${{ secrets.REGISTRY }}" >> $GITHUB_ENV
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -90,15 +88,6 @@ jobs:
     - name: Verify images
       run: |
         python build_and_push.py --registry ${{ env.REGISTRY }} --verify-only
-    
-    - name: Test deployment (if requested)
-      if: github.event.inputs.deploy_after == 'true'
-      run: |
-        echo "Testing deployment with new images..."
-        python deploy_registry.py verify
-        python deploy_registry.py pull
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Generate SBOM
       run: |

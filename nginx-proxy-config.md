@@ -141,7 +141,7 @@ curl https://gha.yourdomain.com/api/v1/runners
 ## Troubleshooting
 
 ### Error 502 Bad Gateway
-- Verificar que el contenedor esté corriendo: `python3 deploy_registry.py status`
+- Verificar que el contenedor esté corriendo: `docker compose ps`
 - Confirmar puerto 8080 accesible localmente
 
 ### Error de Autenticación

@@ -6,7 +6,7 @@ Para que los workflows funcionen correctamente con el registry privado, necesita
 
 ### Registry Secrets
 
-- **`REGISTRY_USERNAME`**: Usuario del registry `your-registry.com`
+- **`REGISTRY_USERNAME`**: Usuario del registry
 - **`REGISTRY_PASSWORD`**: Contraseña o token de acceso al registry
 
 ### Configuración en GitHub
@@ -45,7 +45,7 @@ git push origin v1.0.0
 
 El workflow usa las siguientes variables:
 
-- `REGISTRY`: `your-registry.com` (hardcodeado)
+- `REGISTRY`: Desde secrets (configurable)
 - `REGISTRY_USERNAME`: Desde secrets
 - `REGISTRY_PASSWORD`: Desde secrets
 

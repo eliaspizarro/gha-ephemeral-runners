@@ -47,9 +47,9 @@ graph LR
    echo "GITHUB_TOKEN=ghp_tu_token" > .env
    ```
 
-2. **Iniciar sistema**:
+2. **Inicia el sistema**:
    ```bash
-   python3 deploy_registry.py
+   docker compose up -d
    ```
 
 3. **Verificar funcionamiento**:
@@ -97,7 +97,7 @@ graph LR
 
 3. **Desplegar**:
    ```bash
-   python3 deploy_registry.py
+   docker compose up -d
    ```
 
 ### Opción 2: Build local
@@ -211,7 +211,7 @@ curl http://localhost:8080/api/v1/runners
 curl http://localhost:8080/api/v1/health
 
 # Ver logs
-docker-compose logs -f orchestrator
+docker compose logs -f orchestrator
 ```
 
 ## [API] API Reference
@@ -346,24 +346,6 @@ Para producción, usa Nginx Proxy Manager:
 - `IDLE_TIMEOUT`: Timeout de inactividad (default: 3600)
 - `IMAGE_VERSION`: Versión de imágenes (default: latest)
 
-## [Wrench] Scripts de Gestión
-
-### Deploy Registry Script
-
-```bash
-python3 deploy_registry.py [comando]
-
-# Comandos disponibles:
-status    # Ver estado de servicios
-logs      # Ver logs en tiempo real
-health    # Verificar salud
-restart   # Reiniciar servicios
-pull      # Actualizar imágenes
-stop      # Detener servicios
-verify    # Verificar imágenes locales
-info      # Mostrar información de despliegue
-```
-
 ### Build and Push Script
 
 ```bash
@@ -377,7 +359,7 @@ python3 build_and_push.py [opciones]
 --cleanup                  # Limpiar imágenes después
 ```
 
-## [Search] Troubleshooting
+## 🔍 Troubleshooting
 
 ### Runner no se registra
 
@@ -389,7 +371,7 @@ python3 build_and_push.py [opciones]
 
 2. **Revisar logs**:
    ```bash
-   docker-compose logs orchestrator
+   docker compose logs orchestrator
    ```
 
 3. **Confirmar scope_name**:
@@ -406,12 +388,12 @@ python3 build_and_push.py [opciones]
 
 2. **Verificar imágenes**:
    ```bash
-   python3 deploy_registry.py verify
+   docker images | grep gha-
    ```
 
 3. **Revisar logs de construcción**:
    ```bash
-   docker-compose build
+   docker compose build
    ```
 
 ### API Gateway no responde
@@ -423,7 +405,7 @@ python3 build_and_push.py [opciones]
 
 2. **Verificar logs**:
    ```bash
-   docker-compose logs api-gateway
+   docker compose logs api-gateway
    ```
 
 3. **Probar health check**:
@@ -435,11 +417,11 @@ python3 build_and_push.py [opciones]
 
 ```bash
 # Logs del sistema
-docker-compose logs -f
+docker compose logs -f
 
 # Logs específicos
-docker-compose logs -f api-gateway
-docker-compose logs -f orchestrator
+docker compose logs -f api-gateway
+docker compose logs -f orchestrator
 
 # Logs de runner específico
 docker logs runner-abc123

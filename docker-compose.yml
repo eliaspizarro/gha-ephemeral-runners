@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # API Gateway
   api-gateway:
@@ -15,7 +13,8 @@ services:
       - MAX_REQUESTS=${MAX_REQUESTS:-100}
       - RATE_WINDOW=${RATE_WINDOW:-60}
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
     networks:
       - gha-network
     restart: unless-stopped
