@@ -45,7 +45,7 @@ git push origin v1.0.0
 
 El workflow usa las siguientes variables:
 
-- `REGISTRY`: Desde secrets (configurable)
+- `REGISTRY`: Variable de entorno (configurable en workflow)
 - `REGISTRY_USERNAME`: Desde secrets
 - `REGISTRY_PASSWORD`: Desde secrets
 
