@@ -250,9 +250,6 @@ def main():
     
     parser = argparse.ArgumentParser(description="Build y push de imágenes Docker para GHA Ephemeral Runners")
     parser.add_argument("--registry", default="your-registry.com", help="Registry Docker")
-    parser.add_argument("--username", help="Usuario del registry (opcional si ya está logueado)")
-    parser.add_argument("--password", help="Contraseña del registry (opcional si ya está logueado)")
-    parser.add_argument("--no-login", action="store_true", help="Omitir login (usar credenciales existentes)")
     parser.add_argument("--verify-only", action="store_true", help="Solo verificar imágenes existentes")
     parser.add_argument("--cleanup", action="store_true", help="Limpiar imágenes después del build")
     parser.add_argument("--dry-run", action="store_true", help="Simular ejecución sin hacer cambios")
@@ -263,36 +260,6 @@ def main():
     builder = DockerBuilder(args.registry)
     
     try:
-        # Login si es necesario
-        if not args.no_login and not args.verify_only and not args.dry_run:
-            if not args.username or not args.password:
-                # Intentar obtener de variables de entorno
-                username = os.getenv("REGISTRY_USERNAME") or args.username
-                password = os.getenv("REGISTRY_PASSWORD") or args.password
-                
-                if not username or not password:
-                    logger.info("No se proporcionaron credenciales, intentando login existente...")
-                    # Verificar si ya está logueado
-                    if builder.verify_registry_access():
-                        logger.info("Login existente verificado, omitiendo login")
-                    else:
-                        logger.error("No se pudo verificar acceso al registry. Proporcione --username y --password o use --no-login")
-                        sys.exit(1)
-                else:
-                    username = args.username
-                    password = args.password
-                    
-                    if not builder.login_registry(username, password):
-                        logger.error("Falló login al registry")
-                        sys.exit(1)
-            else:
-                username = args.username
-                password = args.password
-                
-                if not builder.login_registry(username, password):
-                    logger.error("Falló login al registry")
-                    sys.exit(1)
-        
         # Verificar solo
         if args.verify_only:
             if builder.verify_images():
