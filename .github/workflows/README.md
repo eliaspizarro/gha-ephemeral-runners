@@ -45,9 +45,19 @@ git push origin v1.0.0
 
 El workflow usa las siguientes variables:
 
-- `REGISTRY`: Variable de entorno (configurable en workflow)
+- `REGISTRY`: Variable de configuración (configurable en GitHub Settings)
 - `REGISTRY_USERNAME`: Desde secrets
 - `REGISTRY_PASSWORD`: Desde secrets
+
+### Configuración de REGISTRY
+
+Para configurar `REGISTRY` como variable:
+
+1. Ve a tu repositorio en GitHub
+2. Settings → Secrets and variables → Actions
+3. Variables → New repository variable
+4. Name: `REGISTRY`
+5. Value: `your-registry.com`
 
 ## Troubleshooting
 
