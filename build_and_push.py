@@ -91,6 +91,33 @@ class DockerBuilder:
             logger.error(f"Error en login: {e}")
             return False
     
+    def verify_registry_access(self) -> bool:
+        """
+        Verifica si se tiene acceso al registry.
+        
+        Returns:
+            True si se puede acceder al registry
+        """
+        try:
+            # Intentar listar repositorios o hacer un ping al registry
+            cmd = ["docker", "run", "--rm", "--network=host", 
+                   "alpine/curl:latest", "curl", "-f", 
+                   f"https://{self.registry}/v2/", "-s"]
+            
+            success, output = self.run_command(cmd)
+            
+            if success:
+                logger.info("Acceso al registry verificado")
+                return True
+            else:
+                logger.warning(f"No se puede verificar acceso al registry: {output}")
+                # Continuar anyway, puede ser que el registry no permita listar sin auth
+                return True
+                
+        except Exception as e:
+            logger.warning(f"Error verificando acceso al registry: {e}")
+            return True  # Continuar, puede ser un problema de red
+    
     def build_image(self, image_name: str, context_path: str) -> bool:
         """
         Construye una imagen Docker.
@@ -144,6 +171,10 @@ class DockerBuilder:
             True si todas las operaciones fueron exitosas
         """
         logger.info("Iniciando build y push de todas las imágenes...")
+        
+        # Verificar acceso al registry primero
+        if not self.verify_registry_access():
+            logger.warning("No se puede verificar acceso al registry, continuando...")
         
         for image_name, context_path in self.images.items():
             logger.info(f"Procesando imagen: {image_name}")
@@ -207,6 +238,7 @@ def main():
     parser.add_argument("--no-login", action="store_true", help="Omitir login (usar credenciales existentes)")
     parser.add_argument("--verify-only", action="store_true", help="Solo verificar imágenes existentes")
     parser.add_argument("--cleanup", action="store_true", help="Limpiar imágenes después del build")
+    parser.add_argument("--dry-run", action="store_true", help="Simular ejecución sin hacer cambios")
     
     args = parser.parse_args()
     
@@ -215,12 +247,20 @@ def main():
     
     try:
         # Login si es necesario
-        if not args.no_login and not args.verify_only:
+        if not args.no_login and not args.verify_only and not args.dry_run:
             if not args.username or not args.password:
-                logger.error("Se requieren --username y --password para login")
-                sys.exit(1)
+                # Intentar obtener de variables de entorno
+                username = os.getenv("REGISTRY_USERNAME") or args.username
+                password = os.getenv("REGISTRY_PASSWORD") or args.password
+                
+                if not username or not password:
+                    logger.error("Se requieren --username y --password o variables de entorno REGISTRY_USERNAME y REGISTRY_PASSWORD")
+                    sys.exit(1)
+            else:
+                username = args.username
+                password = args.password
             
-            if not builder.login_registry(args.username, args.password):
+            if not builder.login_registry(username, password):
                 logger.error("Falló login al registry")
                 sys.exit(1)
         
@@ -232,6 +272,16 @@ def main():
             else:
                 logger.error("Verificación fallida")
                 sys.exit(1)
+        
+        # Dry run
+        if args.dry_run:
+            logger.info("DRY RUN - Simulando ejecución:")
+            for image_name, context_path in builder.images.items():
+                full_image_name = f"{builder.registry}/{image_name}:latest"
+                logger.info(f"  Build: {context_path} -> {full_image_name}")
+                logger.info(f"  Push: {full_image_name}")
+            logger.info("DRY RUN completado")
+            sys.exit(0)
         
         # Build y push
         if not builder.build_and_push_all():

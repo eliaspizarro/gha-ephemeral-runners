@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # API Gateway
   api-gateway:
-    image: your-registry.com/gha-api-gateway:latest
+    image: ${REGISTRY}/gha-api-gateway:${IMAGE_VERSION:-latest}
     container_name: gha-api-gateway
     ports:
       - "8080:8080"
@@ -28,12 +28,12 @@ services:
 
   # Orquestador
   orchestrator:
-    image: your-registry.com/gha-orchestrator:latest
+    image: ${REGISTRY}/gha-orchestrator:${IMAGE_VERSION:-latest}
     container_name: gha-orchestrator
     environment:
       - PORT=8000
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - RUNNER_IMAGE=${RUNNER_IMAGE:-your-registry.com/gha-runner:latest}
+      - RUNNER_IMAGE=${RUNNER_IMAGE:-${REGISTRY}/gha-runner:${IMAGE_VERSION:-latest}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

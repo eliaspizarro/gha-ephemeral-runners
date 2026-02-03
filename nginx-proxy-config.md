@@ -21,7 +21,19 @@
 - Habilitar SSL Certificate
 - Seleccionar certificado (Let's Encrypt recomendado)
 
-### 3. Custom Locations (Opcional)
+### 3. Autenticación (Recomendado)
+
+#### Opción A: Basic Auth
+- Habilitar "Require Authentication"
+- Crear usuario y contraseña
+
+#### Opción B: API Key Header
+- En "Custom Locations" agregar header:
+```
+X-API-Key: your-secret-key
+```
+
+### 4. Custom Locations (Opcional)
 
 Si quieres limitar endpoints:
 
@@ -30,12 +42,27 @@ Location: /api/v1/*
 Proxy Pass: http://localhost:8080/api/v1/
 ```
 
-### 4. Headers (Opcional pero recomendado)
+### 5. Headers (Recomendado)
 
 ```
 X-Forwarded-Proto: $scheme
 X-Forwarded-Host: $host
 X-Forwarded-For: $proxy_add_x_forwarded_for
+```
+
+## Configuración de .env para Proxy Manager
+
+Para usar con Nginx Proxy Manager, configura tu `.env`:
+
+```bash
+# Deshabilitar autenticación del gateway (el proxy la maneja)
+ENABLE_AUTH=false
+API_KEY=not-needed
+
+# Registry y configuración
+REGISTRY=TU_REGISTRY
+IMAGE_VERSION=latest
+GITHUB_TOKEN=tu_github_token
 ```
 
 ## Ejemplo de Configuración
@@ -45,6 +72,10 @@ X-Forwarded-For: $proxy_add_x_forwarded_for
 server {
     listen 443 ssl http2;
     server_name gha.yourdomain.com;
+    
+    # Autenticación Basic (si se habilita)
+    auth_basic "Restricted Area";
+    auth_basic_user_file /config/nginx/.htpasswd;
     
     location / {
         proxy_pass http://localhost:8080;
@@ -66,6 +97,19 @@ Una vez configurado:
 
 ## Ejemplos de Uso
 
+### Con Basic Auth
+```bash
+# Crear runner (con usuario/contraseña del proxy)
+curl -X POST https://gha.yourdomain.com/api/v1/runners \
+  -u username:password \
+  -H 'Content-Type: application/json' \
+  -d '{"scope":"repo","scope_name":"owner/repo"}'
+
+# Listar runners
+curl -u username:password https://gha.yourdomain.com/api/v1/runners
+```
+
+### Sin Autenticación (si no se habilitó en proxy)
 ```bash
 # Crear runner
 curl -X POST https://gha.yourdomain.com/api/v1/runners \
@@ -76,9 +120,34 @@ curl -X POST https://gha.yourdomain.com/api/v1/runners \
 curl https://gha.yourdomain.com/api/v1/runners
 ```
 
+## Ventajas de usar Nginx Proxy Manager
+
+- [OK] **SSL/TLS**: Certificados automáticos con Let's Encrypt
+- [OK] **Autenticación Centralizada**: Basic Auth o API Keys
+- [OK] **Rate Limiting**: Control de solicitudes
+- [OK] **Logs Centralizados**: Todo el tráfico en un lugar
+- [OK] **Firewall**: Protección a nivel de proxy
+- [OK] **Easy Management**: Interfaz web amigable
+
 ## Notas Importantes
 
 1. **Solo puerto 8080**: El orquestador (puerto 8000) es completamente interno
 2. **GitHub API**: El sistema necesita acceso a `api.github.com` desde el servidor
 3. **Docker Socket**: Asegurar que el servidor Docker tenga acceso a GitHub
 4. **Firewall**: Permitir salida del servidor a `api.github.com:443`
+5. **ENABLE_AUTH=false**: El proxy maneja la autenticación, no el gateway
+6. **Registry**: Asegurar que el servidor pueda acceder a `TU_REGISTRY`
+
+## Troubleshooting
+
+### Error 502 Bad Gateway
+- Verificar que el contenedor esté corriendo: `python3 deploy_registry.py status`
+- Confirmar puerto 8080 accesible localmente
+
+### Error de Autenticación
+- Verificar configuración de Basic Auth en Nginx Proxy Manager
+- Confirmar que `ENABLE_AUTH=false` en `.env`
+
+### SSL Certificate Issues
+- Verificar que el dominio apunte correctamente al servidor
+- Revisar logs de Let's Encrypt en Nginx Proxy Manager

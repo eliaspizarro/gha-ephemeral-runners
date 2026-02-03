@@ -85,11 +85,14 @@ temp/
 *.tmp
 *.temp
 
-# Configuration files with secrets
+# Environment files with secrets
 .env.local
 .env.production
 config.local.json
 secrets.json
+
+# Keep .env.example but ignore .env with real secrets
+.env
 
 # Build artifacts
 build/

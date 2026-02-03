@@ -18,11 +18,29 @@ logger = logging.getLogger(__name__)
 class DeployManager:
     def __init__(self, registry: str = "your-registry.com"):
         self.registry = registry
+        # Leer variables de entorno
+        self.load_env()
+        
+        # Construir lista de imágenes basada en configuración
+        image_version = os.getenv("IMAGE_VERSION", "latest")
         self.images = [
-            f"{registry}/gha-runner:latest",
-            f"{registry}/gha-orchestrator:latest",
-            f"{registry}/gha-api-gateway:latest"
+            f"{registry}/gha-runner:{image_version}",
+            f"{registry}/gha-orchestrator:{image_version}",
+            f"{registry}/gha-api-gateway:{image_version}"
         ]
+    
+    def load_env(self):
+        """Carga variables de entorno desde archivo .env."""
+        try:
+            if os.path.exists(".env"):
+                with open(".env", "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            key, value = line.split("=", 1)
+                            os.environ[key] = value
+        except Exception as e:
+            logger.warning(f"Error cargando .env: {e}")
     
     def run_command(self, cmd: List[str], cwd: str = None, capture_output: bool = True) -> Tuple[bool, str]:
         """
@@ -101,9 +119,11 @@ class DeployManager:
             with open(".env", "r") as f:
                 env_content = f.read()
             
-            if "GITHUB_TOKEN=" not in env_content or "GITHUB_TOKEN=$" in env_content:
-                logger.error("GITHUB_TOKEN es obligatorio en .env")
-                return False
+            required_vars = ["GITHUB_TOKEN", "REGISTRY"]
+            for var in required_vars:
+                if f"{var}=" not in env_content or f"{var}=$" in env_content:
+                    logger.error(f"{var} es obligatorio en .env")
+                    return False
             
         except Exception as e:
             logger.error(f"Error leyendo .env: {e}")
@@ -243,6 +263,7 @@ class DeployManager:
         print()
         print("API Gateway: http://localhost:8080")
         print(f"Registry: {self.registry}")
+        print(f"Image Version: {os.getenv('IMAGE_VERSION', 'latest')}")
         print("Imágenes usadas:")
         for image in self.images:
             print(f"  - {image}")
@@ -252,6 +273,11 @@ class DeployManager:
         print("  Ver estado: python3 deploy_registry.py status")
         print("  Detener: python3 deploy_registry.py stop")
         print("  Actualizar imágenes: python3 deploy_registry.py pull")
+        print()
+        print("Variables de entorno:")
+        print(f"  REGISTRY: {os.getenv('REGISTRY', 'No configurado')}")
+        print(f"  IMAGE_VERSION: {os.getenv('IMAGE_VERSION', 'latest')}")
+        print(f"  ENABLE_AUTH: {os.getenv('ENABLE_AUTH', 'false')}")
         print()
     
     def deploy(self) -> bool:
