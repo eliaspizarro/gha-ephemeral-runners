@@ -15,8 +15,9 @@ RUN apt-get update && \
         golang-go \
         && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario no root y agregar al grupo docker
-RUN groupadd -r orchestrator && \
+# Crear usuario no root y grupo docker
+RUN groupadd -r docker && \
+    groupadd -r orchestrator && \
     useradd -r -g orchestrator -G docker -d /app -s /bin/bash orchestrator
 
 # Crear directorio de la aplicación
