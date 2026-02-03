@@ -67,7 +67,9 @@ class ContainerManager:
                     "gha-ephemeral": "true",
                     "runner-name": runner_name,
                     "scope": scope,
-                    "scope-name": scope_name
+                    "scope_name": scope_name,  # Consistente con guion bajo
+                    "repo": scope_name,         # Para compatibilidad con get_active_runners_for_repo
+                    "scope-name": scope_name    # Para compatibilidad con código existente
                 }
             )
             

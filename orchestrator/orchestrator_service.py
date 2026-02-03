@@ -63,12 +63,23 @@ app = FastAPI(
 GITHUB_RUNNER_TOKEN = os.getenv("GITHUB_RUNNER_TOKEN")
 RUNNER_IMAGE = "ghcr.io/github-runner-images/ubuntu-latest:latest"
 
+# Configuración de automatización
+AUTO_CREATE_RUNNERS = os.getenv("AUTO_CREATE_RUNNERS", "false").lower() == "true"
+RUNNER_CHECK_INTERVAL = int(os.getenv("RUNNER_CHECK_INTERVAL", "300"))  # Default 5 minutos
+
 if not GITHUB_RUNNER_TOKEN:
     logger.error("GITHUB_RUNNER_TOKEN es obligatorio")
     raise RuntimeError("GITHUB_RUNNER_TOKEN es obligatorio")
 
 # Inicializar Lifecycle Manager
 lifecycle_manager = LifecycleManager(GITHUB_RUNNER_TOKEN, RUNNER_IMAGE)
+
+# Iniciar monitoreo automático si está activado
+if AUTO_CREATE_RUNNERS:
+    logger.info(f"Automatización activada - Verificando cada {RUNNER_CHECK_INTERVAL} segundos")
+    lifecycle_manager.start_monitoring(RUNNER_CHECK_INTERVAL)
+else:
+    logger.info("Automatización desactivada - Use creación manual de runners")
 
 @app.post("/runners/create", response_model=List[RunnerResponse])
 async def create_runners(request: RunnerRequest):
@@ -148,7 +159,7 @@ async def destroy_runner(runner_id: str):
 
 @app.get("/runners", response_model=List[RunnerStatus])
 async def list_runners():
-    # Lista todos los runners activos
+    # Lista todos los runners activos (solo para debugging interno)
     try:
         runners = lifecycle_manager.list_active_runners()
         return [RunnerStatus(**runner) for runner in runners]
