@@ -117,9 +117,9 @@ graph LR
 ### ¿Qué tipo de token necesitas?
 
 **Personal Access Token (PAT)** con los siguientes scopes:
-- [OK] `repo` - Acceso completo a repositorios
-- [OK] `admin:org` - Administración de organización
-- [OK] `workflow` - Ejecutar workflows de GitHub Actions
+- `repo` - Acceso completo a repositorios
+- `admin:org` - Administración de organización
+- `workflow` - Ejecutar workflows de GitHub Actions
 
 ### ¿Cómo obtener el token?
 
@@ -141,10 +141,10 @@ GITHUB_TOKEN=ghp_tu_personal_access_token_aqui
 3. Gestionar ciclo de vida completo
 
 **Seguridad:**
-- [OK] Tu PAT solo existe en el orquestador
-- [OK] Los runners usan tokens temporales
-- [OK] Sin persistencia en logs o imágenes
-- [OK] Puedes rotar tu PAT sin afectar runners activos
+- Tu PAT solo existe en el orquestador
+- Los runners usan tokens temporales
+- Sin persistencia en logs o imágenes
+- Puedes rotar tu PAT sin afectar runners activos
 
 ## [Target] Uso Práctico
 
