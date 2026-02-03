@@ -213,13 +213,13 @@ async def health_check():
     }
 
 @app.get("/healthz")
-async def kubernetes_health_check():
+async def docker_health_check():
     """
-    Health check nativo para Kubernetes.
+    Health check nativo para Docker.
     Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
     
     Returns:
-        Estado del servicio para Kubernetes
+        Estado del servicio para Docker
     """
     try:
         # Verificar estado del lifecycle manager

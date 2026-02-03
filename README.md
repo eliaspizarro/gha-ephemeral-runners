@@ -370,14 +370,8 @@ cp .env.example .env
 # Build y push
 python build_and_push.py
 
-# Solo verificar imágenes locales
-python build_and_push.py --verify-only
-
 # Simular ejecución
 python build_and_push.py --dry-run
-
-# Verificar health checks
-python build_and_push.py --health-check
 
 # Con limpieza de imágenes
 python build_and_push.py --cleanup
@@ -392,6 +386,36 @@ El workflow `build-and-push.yml` automatiza la construcción y publicación:
 - **Plataforma**: `linux/amd64` (solo x86_64)
 - **Tags**: `:latest` y `:versión` (ambos tags)
 - **Actions**: Usa docker/setup-buildx-action@v3, docker/login-action@v3, docker/build-push-action@v6
+
+### Configuración de GitHub Actions
+
+#### Variables de Repositorio (vars)
+Configura en `Settings > Secrets and variables > Actions > Variables`:
+```bash
+REGISTRY=your-registry.com
+```
+
+#### Secrets del Repositorio
+Configura en `Settings > Secrets and variables > Actions > Secrets`:
+```bash
+REGISTRY_USERNAME=tu_usuario_registry
+REGISTRY_PASSWORD=tu_contraseña_registry
+```
+
+#### Permisos del Workflow
+El workflow incluye permisos necesarios en `build-and-push.yml`:
+```yaml
+permissions:
+  contents: read  # Para leer el repositorio
+```
+
+#### Flujo de CI/CD
+1. **Push tag** `v1.2.3` al repositorio
+2. **Workflow trigger** - Se activa automáticamente
+3. **Login registry** - Usa secrets configurados
+4. **Build images** - Construye para linux/amd64
+5. **Push images** - Publica con tags `:latest` y `:v1.2.3`
+6. **Health checks** - Verifica endpoints nativos
 
 ### Imágenes Construidas
 
@@ -408,22 +432,70 @@ your-registry.com/gha-api-gateway:v1.2.3
 
 ### Health Checks de los Contenedores
 
-Los servicios incluyen health checks nativos para monitoreo:
+Los servicios incluyen health checks nativos en Go compilados para Docker:
 
 #### API Gateway
-- **Endpoint**: `/healthz` - Health check nativo para Kubernetes
+- **Endpoint**: `/healthz` - Health check nativo para Docker
 - **Endpoint**: `/health` - Health check básico con información del servicio
 - **Endpoint**: `/api/v1/health` - Health check completo incluyendo orquestador
+- **Dockerfile**: Health check nativo con binario `./healthcheck`
 
 #### Orquestador
-- **Endpoint**: `/healthz` - Health check nativo para Kubernetes  
+- **Endpoint**: `/healthz` - Health check nativo para Docker  
 - **Endpoint**: `/health` - Health check con estado de runners activos
+- **Dockerfile**: Health check nativo con binario `./healthcheck`
+
+#### Implementación Go Compilada
+```go
+// healthcheck.go
+package main
+
+import (
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    "time"
+)
+
+func main() {
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080" // o "8000" para orchestrator
+    }
+    
+    time.Sleep(5 * time.Second)
+    
+    url := fmt.Sprintf("http://localhost:%s/healthz", port)
+    
+    client := &http.Client{Timeout: 10 * time.Second}
+    resp, err := client.Get(url)
+    if err != nil {
+        log.Fatalf("Health check failed: %v", err)
+    }
+    defer resp.Body.Close()
+    
+    if resp.StatusCode != http.StatusOK {
+        log.Fatalf("Health check failed with status: %d", resp.StatusCode)
+    }
+    
+    log.Printf("Health Check OK [Res Code: %d]\n", resp.StatusCode)
+}
+```
+
+#### Docker Build Optimizado
+```dockerfile
+# Compilar health check de Go
+COPY healthcheck.go .
+RUN go build -o healthcheck healthcheck.go
+
+# Health check nativo en Go compilado
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ./healthcheck || exit 1
+```
 
 #### Verificación Local
 ```bash
-# Verificar health checks locales
-python build_and_push.py --health-check
-
 # Verificar health checks en Docker Compose
 docker compose ps
 curl http://localhost:8080/healthz
@@ -432,12 +504,34 @@ curl http://localhost:8000/healthz
 
 #### En Producción
 ```bash
-# Kubernetes usa health checks automáticamente
-kubectl get pods
-kubectl describe pod <pod-name>
+# Docker usa health checks automáticamente
+docker ps  # Muestra estado healthy/unhealthy
+docker inspect <container-name>  # Detalles del health check
 ```
 
 ### Troubleshooting
+
+### GitHub Actions Fallido
+
+1. **Verificar configuración de vars/secrets**:
+   ```bash
+   # En GitHub: Settings > Secrets and variables > Actions
+   # Variables: REGISTRY=your-registry.com
+   # Secrets: REGISTRY_USERNAME, REGISTRY_PASSWORD
+   ```
+
+2. **Verificar permisos del workflow**:
+   ```yaml
+   # En .github/workflows/build-and-push.yml
+   permissions:
+     contents: read  # Necesario para checkout
+   ```
+
+3. **Revisar logs del workflow**:
+   ```bash
+   # En GitHub: Actions > Select workflow run > Jobs
+   # Buscar errores en "Login to Registry" o "Build and push"
+   ```
 
 ### Health Check Fallido
 

@@ -84,52 +84,6 @@ class DockerBuilder:
         logger.info("Todas las imágenes procesadas exitosamente")
         return True
     
-    def verify_health_checks(self) -> bool:
-        """Verifica que los health checks funcionen correctamente."""
-        logger.info("Verificando health checks de las imágenes...")
-        
-        for image_name in self.images.keys():
-            full_image_name = f"{self.registry}/{image_name}:{self.image_version}"
-            
-            # Iniciar contenedor temporal para health check
-            container_name = f"health-check-{image_name}"
-            cmd = [
-                "docker", "run", "--rm", "--name", container_name,
-                full_image_name, "curl", "-f", 
-                f"http://localhost:{8000 if image_name == 'gha-orchestrator' else 8080}/healthz"
-            ]
-            
-            success, output = self.run_command(cmd)
-            
-            if success:
-                logger.info(f"Health check exitoso para {full_image_name}")
-            else:
-                logger.error(f"Health check fallido para {full_image_name}: {output}")
-                return False
-            
-            # Limpiar contenedor si existe
-            cleanup_cmd = ["docker", "rm", container_name]
-            self.run_command(cleanup_cmd)
-        
-        logger.info("Todos los health checks verificados exitosamente")
-        return True
-    
-    def verify_images(self) -> bool:
-        logger.info("Verificando imágenes locales...")
-        
-        for image_name in self.images.keys():
-            full_image_name = f"{self.registry}/{image_name}:{self.image_version}"
-            cmd = ["docker", "image", "inspect", full_image_name]
-            
-            success, _ = self.run_command(cmd)
-            
-            if not success:
-                logger.warning(f"Imagen {full_image_name} no encontrada localmente")
-                return False
-        
-        logger.info("Todas las imágenes verificadas")
-        return True
-    
     def cleanup_images(self):
         logger.info("Limpiando imágenes Docker...")
         
@@ -145,10 +99,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Build y push de imágenes Docker para GHA Ephemeral Runners")
-    parser.add_argument("--verify-only", action="store_true", help="Solo verificar imágenes existentes")
     parser.add_argument("--cleanup", action="store_true", help="Limpiar imágenes después del build")
     parser.add_argument("--dry-run", action="store_true", help="Simular ejecución sin hacer cambios")
-    parser.add_argument("--health-check", action="store_true", help="Verificar health checks de las imágenes")
     
     args = parser.parse_args()
     
@@ -186,47 +138,23 @@ def main():
     # Crear builder
     builder = DockerBuilder(registry, image_version)
     
-    try:
-        if args.verify_only:
-            if builder.verify_images():
-                logger.info("Verificación exitosa")
-                sys.exit(0)
-            else:
-                logger.error("Verificación fallida")
-                sys.exit(1)
-        
-        if args.health_check:
-            if builder.verify_health_checks():
-                logger.info("Health checks verificados exitosamente")
-                sys.exit(0)
-            else:
-                logger.error("Health checks fallidos")
-                sys.exit(1)
-        
-        if args.dry_run:
-            logger.info("DRY RUN - Simulando ejecución:")
-            for image_name, context_path in builder.images.items():
-                full_image_name = f"{builder.registry}/{image_name}:{builder.image_version}"
-                logger.info(f"  Build: {context_path} -> {full_image_name}")
-                logger.info(f"  Push: {full_image_name}")
-            logger.info("DRY RUN completado")
-            sys.exit(0)
-        
-        if not builder.build_and_push_all():
-            logger.error("Falló build y push de imágenes")
-            sys.exit(1)
-        
-        if args.cleanup:
-            builder.cleanup_images()
-        
-        logger.info("Proceso completado exitosamente")
-        
-    except KeyboardInterrupt:
-        logger.info("Proceso interrumpido por usuario")
-        sys.exit(130)
-    except Exception as e:
-        logger.error(f"Error inesperado: {e}")
+    if args.dry_run:
+        logger.info("DRY RUN - Simulando ejecución:")
+        for image_name, context_path in builder.images.items():
+            full_image_name = f"{builder.registry}/{image_name}:{builder.image_version}"
+            logger.info(f"  Build: {context_path} -> {full_image_name}")
+            logger.info(f"  Push: {full_image_name}")
+        logger.info("DRY RUN completado")
+        sys.exit(0)
+    
+    if not builder.build_and_push_all():
+        logger.error("Falló build y push de imágenes")
         sys.exit(1)
+    
+    if args.cleanup:
+        builder.cleanup_images()
+    
+    logger.info("Proceso completado exitosamente")
 
 if __name__ == "__main__":
     main()
