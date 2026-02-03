@@ -46,10 +46,20 @@ jobs:
           ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }}
         platforms: linux/amd64
     
-    - name: Verify images
-      run: |
-        echo "Verificando que las imágenes se construyeron correctamente..."
-        for image in gha-orchestrator gha-api-gateway; do
-          echo "✓ Imagen ${{ vars.REGISTRY }}/$image:${{ github.ref_name }} construida y subida"
-        done
-        echo "Todas las imágenes verificadas exitosamente"
+    - name: Verify images exist
+      uses: cloudposse/github-action-docker-image-exists@main
+      with:
+        registry: ${{ vars.REGISTRY }}
+        repository: gha-orchestrator
+        tag: ${{ github.ref_name }}
+        login: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    
+    - name: Verify api-gateway image exists
+      uses: cloudposse/github-action-docker-image-exists@main
+      with:
+        registry: ${{ vars.REGISTRY }}
+        repository: gha-api-gateway
+        tag: ${{ github.ref_name }}
+        login: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
