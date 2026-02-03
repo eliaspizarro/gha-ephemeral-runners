@@ -40,10 +40,11 @@ class ContainerManager:
             runner_name = f"ephemeral-runner-{uuid.uuid4().hex[:8]}"
         
         environment = {
-            "GITHUB_REGISTRATION_TOKEN": registration_token,
+            "REPO_URL": f"https://github.com/{scope_name}",
+            "RUNNER_TOKEN": registration_token,
             "RUNNER_NAME": runner_name,
-            "SCOPE": scope,
-            "SCOPE_NAME": scope_name
+            "RUNNER_WORKDIR": f"/tmp/github-runner-{scope_name}",
+            "LABELS": "self-hosted,ephemeral"
         }
         
         if runner_group:
