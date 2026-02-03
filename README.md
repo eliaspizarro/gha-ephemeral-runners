@@ -82,7 +82,7 @@ curl http://localhost:8080/health
      build:
        runs-on: self-hosted  # <- ¡Esto es todo!
        steps:
-       - uses: actions/checkout@v4
+       - uses: actions/checkout@v5
        - run: echo "Running on ephemeral runner!"
    ```
 
