@@ -17,7 +17,6 @@ class DockerBuilder:
         self.registry = registry
         self.image_version = image_version
         self.images = {
-            "gha-runner": "./runner",
             "gha-orchestrator": "./orchestrator", 
             "gha-api-gateway": "./api-gateway"
         }

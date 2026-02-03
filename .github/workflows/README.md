@@ -27,8 +27,7 @@ REGISTRY_PASSWORD=your_registry_password_or_token
 
 1. **Docker Buildx** - Configura build multiplataforma
 2. **Login** - Autenticación en el registry
-3. **Build Images** - Construye las 3 imágenes:
-   - `gha-runner`
+3. **Build Images** - Construye las 2 imágenes:
    - `gha-orchestrator` 
    - `gha-api-gateway`
 
@@ -36,9 +35,6 @@ REGISTRY_PASSWORD=your_registry_password_or_token
 
 Para cada servicio se generan dos tags:
 ```
-your-registry.com/gha-runner:latest
-your-registry.com/gha-runner:v1.2.3
-
 your-registry.com/gha-orchestrator:latest
 your-registry.com/gha-orchestrator:v1.2.3
 

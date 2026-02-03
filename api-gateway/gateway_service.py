@@ -2,6 +2,7 @@ import os
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -55,7 +56,8 @@ app = FastAPI(
     description="Gateway para la plataforma de runners efímeros de GitHub Actions",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Variables de entorno
@@ -65,23 +67,29 @@ API_KEY = os.getenv("API_KEY")
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "false").lower() == "true"
 MAX_REQUESTS = int(os.getenv("MAX_REQUESTS", "100"))
 RATE_WINDOW = int(os.getenv("RATE_WINDOW", "60"))
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
 
 # Validar variables obligatorias
 if not ORCHESTRATOR_URL:
     logger.error("ORCHESTRATOR_URL es obligatorio")
     raise RuntimeError("ORCHESTRATOR_URL es obligatorio")
 
+# Validar que ORCHESTRATOR_URL use el puerto correcto del orchestrator
+if "orchestrator:8000" not in ORCHESTRATOR_URL and "localhost:8000" not in ORCHESTRATOR_URL:
+    logger.warning(f"ORCHESTRATOR_URL debe usar el puerto 8000: {ORCHESTRATOR_URL}")
+    logger.warning("Verifica que ORCHESTRATOR_URL apunte al puerto del orchestrator")
+
 # Inicializar componentes
 router = RequestRouter(ORCHESTRATOR_URL, API_KEY)
 auth = AuthenticationLayer(API_KEY, ENABLE_AUTH)
 rate_limiter = RateLimiter(MAX_REQUESTS, RATE_WINDOW)
 
-# Middleware CORS
+# Middleware CORS (configurable para diferentes escenarios)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configurar según necesidad
+    allow_origins=CORS_ORIGINS,  # Configurable via CORS_ORIGINS env var
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -384,19 +392,18 @@ async def full_health_check():
             message="Error en verificación de salud"
         )
 
-# Eventos de startup/shutdown
-@app.on_event("startup")
-async def startup_event():
-    """Inicialización del gateway."""
+# Lifecycle events (reemplaza @app.on_event deprecated)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     logger.info("Iniciando API Gateway")
     logger.info(f"Orquestador: {ORCHESTRATOR_URL}")
     logger.info(f"Autenticación: {'habilitada' if ENABLE_AUTH else 'deshabilitada'}")
     logger.info(f"Rate limiting: {MAX_REQUESTS} solicitudes por {RATE_WINDOW}s")
-    logger.info("API Gateway iniciado exitosamente")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Limpieza al detener el gateway."""
+    
+    yield
+    
+    # Shutdown
     logger.info("Deteniendo API Gateway")
     # Limpiar rate limiter
     rate_limiter.cleanup_old_entries()

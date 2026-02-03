@@ -43,7 +43,7 @@ app = FastAPI(
 
 # Variables de entorno obligatorias
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-RUNNER_IMAGE = os.getenv("RUNNER_IMAGE", "gha-runner:latest")
+RUNNER_IMAGE = "ghcr.io/github-runner-images/ubuntu-latest:latest"
 
 if not GITHUB_TOKEN:
     logger.error("GITHUB_TOKEN es obligatorio")
@@ -71,10 +71,10 @@ async def shutdown_event():
 async def create_runners(request: RunnerRequest, background_tasks: BackgroundTasks):
     """
     Crea uno o más runners efímeros.
-    
+
     Args:
         request: Parámetros para crear runners
-        
+
     Returns:
         Lista de runners creados
     """
@@ -84,7 +84,7 @@ async def create_runners(request: RunnerRequest, background_tasks: BackgroundTas
                 status_code=400,
                 detail="El número de runners debe estar entre 1 y 10"
             )
-        
+
         runners = []
         for i in range(request.count):
             runner_name = request.runner_name
@@ -98,16 +98,16 @@ async def create_runners(request: RunnerRequest, background_tasks: BackgroundTas
                 runner_group=request.runner_group,
                 labels=request.labels
             )
-            
+
             runners.append(RunnerResponse(
                 runner_id=runner_id,
                 status="created",
                 message="Runner creado exitosamente"
             ))
-        
+
         logger.info(f"Creados {len(runners)} runners para {request.scope}/{request.scope_name}")
         return runners
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -118,21 +118,21 @@ async def create_runners(request: RunnerRequest, background_tasks: BackgroundTas
 async def get_runner_status(runner_id: str):
     """
     Obtiene el estado de un runner específico.
-    
+
     Args:
         runner_id: ID del runner
-        
+
     Returns:
         Estado del runner
     """
     try:
         status = lifecycle_manager.get_runner_status(runner_id)
-        
+
         if status["status"] == "not_found":
             raise HTTPException(status_code=404, detail="Runner no encontrado")
-        
+
         return RunnerStatus(**status)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -143,24 +143,24 @@ async def get_runner_status(runner_id: str):
 async def destroy_runner(runner_id: str):
     """
     Destruye un runner específico.
-    
+
     Args:
         runner_id: ID del runner a destruir
-        
+
     Returns:
         Mensaje de confirmación
     """
     try:
         success = lifecycle_manager.destroy_runner(runner_id)
-        
+
         if not success:
             raise HTTPException(
                 status_code=404,
                 detail="Runner no encontrado o no se pudo destruir"
             )
-        
+
         return {"message": f"Runner {runner_id} destruido exitosamente"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -171,7 +171,7 @@ async def destroy_runner(runner_id: str):
 async def list_runners():
     """
     Lista todos los runners activos.
-    
+
     Returns:
         Lista de runners activos
     """
@@ -186,7 +186,7 @@ async def list_runners():
 async def cleanup_runners():
     """
     Limpia runners inactivos.
-    
+
     Returns:
         Número de runners limpiados
     """
@@ -201,7 +201,7 @@ async def cleanup_runners():
 async def health_check():
     """
     Verificación de salud del servicio.
-    
+
     Returns:
         Estado del servicio
     """
@@ -217,7 +217,7 @@ async def docker_health_check():
     """
     Health check nativo para Docker.
     Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
-    
+
     Returns:
         Estado del servicio para Docker
     """

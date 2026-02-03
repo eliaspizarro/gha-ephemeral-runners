@@ -8,7 +8,7 @@ from docker.models.containers import Container
 logger = logging.getLogger(__name__)
 
 class ContainerManager:
-    def __init__(self, runner_image: str = "gha-runner:latest"):
+    def __init__(self, runner_image: str = "ghcr.io/github-runner-images/ubuntu-latest:latest"):
         self.client = docker.from_env()
         self.runner_image = runner_image
     

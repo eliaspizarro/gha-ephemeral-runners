@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Configuración
-	port := os.Getenv("PORT")
+	port := os.Getenv("ORCHESTRATOR_PORT")
 	if port == "" {
 		port = "8000"
 	}

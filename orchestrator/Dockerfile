@@ -8,7 +8,6 @@ LABEL description="Orquestador de runners efímeros de GitHub Actions"
 # Variables de entorno
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PORT=8000
 
 # Instalar dependencias del sistema
 RUN apt-get update && \

@@ -5,13 +5,8 @@ services:
     container_name: gha-api-gateway
     ports:
       - "8080:8080"
-    environment:
-      - PORT=8080
-      - ORCHESTRATOR_URL=http://orchestrator:8000
-      - API_KEY=${API_KEY:-}
-      - ENABLE_AUTH=${ENABLE_AUTH:-false}
-      - MAX_REQUESTS=${MAX_REQUESTS:-100}
-      - RATE_WINDOW=${RATE_WINDOW:-60}
+    env_file:
+      - .env
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -23,10 +18,8 @@ services:
   orchestrator:
     image: ${REGISTRY}/gha-orchestrator:${IMAGE_VERSION}
     container_name: gha-orchestrator
-    environment:
-      - PORT=8000
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - RUNNER_IMAGE=${REGISTRY}/gha-runner:${IMAGE_VERSION}
+    env_file:
+      - .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

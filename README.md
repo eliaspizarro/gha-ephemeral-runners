@@ -38,7 +38,7 @@ graph LR
 
 - Docker y Docker Compose
 - Token de GitHub con scopes: `repo`, `admin:org`, `workflow`
-- Registry privado con imágenes: `gha-runner`, `gha-orchestrator`, `gha-api-gateway`
+- Registry privado con imágenes: `gha-orchestrator`, `gha-api-gateway`
 
 ### 4 Pasos para Empezar
 
@@ -50,7 +50,7 @@ graph LR
 2. **Configurar registry**:
    ```bash
    echo "REGISTRY=your-registry.com" >> .env
-   echo "IMAGE_VERSION=v1.2.3" >> .env
+   echo "IMAGE_VERSION=latest" >> .env
    ```
 
 3. **Inicia el sistema**:
@@ -199,7 +199,7 @@ sequenceDiagram
     GH->>WF: Busca runner (self-hosted)
     WF->>SYS: ¿Hay runners disponibles?
     SYS->>WF: No, crearé uno
-    SYS->>DOCKER: docker run gha-runner
+    SYS->>DOCKER: docker run runner-oficial
     DOCKER->>SYS: Container creado
     SYS->>GH: Runner registrado
     GH->>RUN: Asigna job
@@ -334,6 +334,7 @@ Para producción, usa Nginx Proxy Manager:
 3. **Configurar .env**:
    ```bash
    ENABLE_AUTH=false  # El proxy maneja la autenticación
+   CORS_ORIGINS=https://yourdomain.com
    ```
 
 ### Variables de Entorno
@@ -348,7 +349,7 @@ Para producción, usa Nginx Proxy Manager:
 - `ENABLE_AUTH`: Habilitar autenticación (default: false)
 - `MAX_REQUESTS`: Límite de rate limiting (default: 100)
 - `RATE_WINDOW`: Ventana de rate limiting (default: 60)
-- `RUNNER_IMAGE`: Imagen para runners (usa ${REGISTRY}/gha-runner:${IMAGE_VERSION})
+- `CORS_ORIGINS`: Orígenes permitidos para CORS
 
 > **Nota**: Las variables `PORT` y `ORCHESTRATOR_URL` están hardcoded en docker-compose.yml y no necesitan configurarse en el .env.
 
@@ -382,47 +383,23 @@ python build_and_push.py --cleanup
 El workflow `build-and-push.yml` automatiza la construcción y publicación:
 
 - **Trigger**: Tags `vX.Y.Z`
-- **Build**: Construye 3 imágenes Docker
-- **Plataforma**: `linux/amd64` (solo x86_64)
-- **Tags**: `:latest` y `:versión` (ambos tags)
-- **Actions**: Usa docker/setup-buildx-action@v3, docker/login-action@v3, docker/build-push-action@v6
+- **Build**: Construye 2 imágenes Docker para `linux/amd64`
+- **Tags**: `:latest` y `:versión` (dual tagging)
+- **Health Checks**: Verifica endpoints nativos Go
 
-### Configuración de GitHub Actions
+#### Configuración Requerida
+- **Repository Variables**: `REGISTRY=your-registry.com`
+- **Repository Secrets**: `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`
+- **Permisos**: `contents: read`, `packages: write`
 
-#### Variables de Repositorio (vars)
-Configura en `Settings > Secrets and variables > Actions > Variables`:
-```bash
-REGISTRY=your-registry.com
-```
-
-#### Secrets del Repositorio
-Configura en `Settings > Secrets and variables > Actions > Secrets`:
-```bash
-REGISTRY_USERNAME=tu_usuario_registry
-REGISTRY_PASSWORD=tu_contraseña_registry
-```
-
-#### Permisos del Workflow
-El workflow incluye permisos necesarios en `build-and-push.yml`:
-```yaml
-permissions:
-  contents: read  # Para leer el repositorio
-```
-
-#### Flujo de CI/CD
-1. **Push tag** `v1.2.3` al repositorio
-2. **Workflow trigger** - Se activa automáticamente
-3. **Login registry** - Usa secrets configurados
-4. **Build images** - Construye para linux/amd64
-5. **Push images** - Publica con tags `:latest` y `:v1.2.3`
-6. **Health checks** - Verifica endpoints nativos
+#### Flujo CI/CD
+1. Push tag `v1.2.3` → Trigger automático
+2. Login registry → Build images → Push con tags
+3. Health checks → Verificación de endpoints
 
 ### Imágenes Construidas
 
 ```bash
-your-registry.com/gha-runner:latest
-your-registry.com/gha-runner:v1.2.3
-
 your-registry.com/gha-orchestrator:latest
 your-registry.com/gha-orchestrator:v1.2.3
 
@@ -445,68 +422,12 @@ Los servicios incluyen health checks nativos en Go compilados para Docker:
 - **Endpoint**: `/health` - Health check con estado de runners activos
 - **Dockerfile**: Health check nativo con binario `./healthcheck`
 
-#### Implementación Go Compilada
-```go
-// healthcheck.go
-package main
-
-import (
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "time"
-)
-
-func main() {
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "8080" // o "8000" para orchestrator
-    }
-    
-    time.Sleep(5 * time.Second)
-    
-    url := fmt.Sprintf("http://localhost:%s/healthz", port)
-    
-    client := &http.Client{Timeout: 10 * time.Second}
-    resp, err := client.Get(url)
-    if err != nil {
-        log.Fatalf("Health check failed: %v", err)
-    }
-    defer resp.Body.Close()
-    
-    if resp.StatusCode != http.StatusOK {
-        log.Fatalf("Health check failed with status: %d", resp.StatusCode)
-    }
-    
-    log.Printf("Health Check OK [Res Code: %d]\n", resp.StatusCode)
-}
-```
-
-#### Docker Build Optimizado
-```dockerfile
-# Compilar health check de Go
-COPY healthcheck.go .
-RUN go build -o healthcheck healthcheck.go
-
-# Health check nativo en Go compilado
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ./healthcheck || exit 1
-```
-
 #### Verificación Local
 ```bash
 # Verificar health checks en Docker Compose
 docker compose ps
 curl http://localhost:8080/healthz
 curl http://localhost:8000/healthz
-```
-
-#### En Producción
-```bash
-# Docker usa health checks automáticamente
-docker ps  # Muestra estado healthy/unhealthy
-docker inspect <container-name>  # Detalles del health check
 ```
 
 ### Troubleshooting
