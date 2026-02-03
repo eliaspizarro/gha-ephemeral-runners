@@ -1,5 +1,5 @@
 /*
- * This script should be run after a period of time (180s), because the server may need some time to prepare.
+ * This script should be run after a period of time (5s), because the server may need some time to prepare.
  */
 package main
 

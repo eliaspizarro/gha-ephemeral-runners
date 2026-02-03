@@ -55,6 +55,9 @@ ORCHESTRATOR_PORT = os.getenv("ORCHESTRATOR_PORT", "8000")
 ORCHESTRATOR_URL = f"http://orchestrator:{ORCHESTRATOR_PORT}"
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
 
+# Inicializar componentes
+router = RequestRouter(ORCHESTRATOR_URL)
+
 # Lifecycle events (reemplaza @app.on_event deprecated)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,25 +77,6 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
-
-# Variables de entorno
-PORT = int(os.getenv("API_GATEWAY_PORT", "8080"))
-ORCHESTRATOR_PORT = os.getenv("ORCHESTRATOR_PORT", "8000")
-ORCHESTRATOR_URL = f"http://orchestrator:{ORCHESTRATOR_PORT}"
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
-
-# Validar variables obligatorias
-if not ORCHESTRATOR_PORT:
-    logger.error("ORCHESTRATOR_PORT es obligatorio")
-    raise RuntimeError("ORCHESTRATOR_PORT es obligatorio")
-
-# Validar que ORCHESTRATOR_URL use el formato correcto
-if not ORCHESTRATOR_URL.startswith("http://orchestrator:"):
-    logger.warning(f"ORCHESTRATOR_URL debe apuntar a orchestrator: {ORCHESTRATOR_URL}")
-    logger.warning("Verifica que la configuración sea correcta")
-
-# Inicializar componentes
-router = RequestRouter(ORCHESTRATOR_URL)
 
 # Middleware CORS (configurable para diferentes escenarios)
 app.add_middleware(

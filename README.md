@@ -29,9 +29,32 @@ graph LR
 
 ### Componentes
 
-1. **API Gateway**: Punto de entrada HTTP, autenticación y rate limiting
-2. **Orquestador**: Descubre repos, genera tokens, crea contenedores, gestiona ciclo de vida
+1. **API Gateway**: Punto de entrada HTTP público, validación y rate limiting
+   - **Endpoints públicos**: `/api/v1/*` 
+   - **Validación**: Field validators en modelos Pydantic
+   - **Respuestas**: Estandarizadas con `APIResponse`
+
+2. **Orquestador**: Gestión interna de runners, descubrimiento y ciclo de vida
+   - **Endpoints internos**: `/runners/*` (solo para debugging)
+   - **Monitoreo**: Automático si `AUTO_CREATE_RUNNERS=true`
+   - **Confianza**: Asume datos validados del Gateway
+
 3. **Runner**: Contenedor efímero que ejecuta jobs y se autodestruye
+   - **Imagen**: Configurable via `RUNNER_IMAGE`
+   - **Aislamiento**: Contenedor Docker aislado
+   - **Autodestrucción**: Eliminación automática post-job
+
+### Flujo de Datos
+
+```
+Cliente → API Gateway → Orquestador → Docker
+   ↓         ↓           ↓          ↓
+Valida   Enruta     Gestiona   Crea
+```
+
+- **API Gateway**: Valida y enruta solicitudes
+- **Orquestador**: Gestiona ciclo de vida de runners
+- **Docker**: Ejecuta contenedores efímeros
 
 ## 🚀 Inicio Rápido
 
@@ -46,6 +69,7 @@ graph LR
    echo "RUNNER_CHECK_INTERVAL=60" >> .env
    echo "REGISTRY=your-registry.com" >> .env
    echo "IMAGE_VERSION=latest" >> .env
+   echo "RUNNER_IMAGE=your-registry.com/gha-runner:latest" >> .env
    ```
 
 2. **Inicia el sistema**:
@@ -69,6 +93,7 @@ graph LR
    echo "GITHUB_RUNNER_TOKEN=ghp_tu_token" > .env
    echo "REGISTRY=your-registry.com" >> .env
    echo "IMAGE_VERSION=latest" >> .env
+   echo "RUNNER_IMAGE=your-registry.com/gha-runner:latest" >> .env
    ```
 
 2. **Inicia el sistema**:
@@ -244,6 +269,7 @@ Los servicios incluyen health checks nativos:
 - `GITHUB_RUNNER_TOKEN`: Token de GitHub para gestión de runners
 - `REGISTRY`: URL de tu registry privado
 - `IMAGE_VERSION`: Versión de imágenes
+- `RUNNER_IMAGE`: Imagen Docker para runners (ej: `your-registry.com/gha-runner:latest`)
 
 ### Automatización (Opcional)
 - `AUTO_CREATE_RUNNERS`: Activar creación automática (`true`/`false`, default: `false`)

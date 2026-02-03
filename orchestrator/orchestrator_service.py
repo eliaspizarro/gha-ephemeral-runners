@@ -40,8 +40,6 @@ class RunnerStatus(BaseModel):
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Iniciando servicio de orquestador")
-    # Iniciar monitoreo automático
-    lifecycle_manager.start_monitoring()
     logger.info("Servicio iniciado exitosamente")
     
     yield
@@ -61,15 +59,19 @@ app = FastAPI(
 
 # Variables de entorno obligatorias
 GITHUB_RUNNER_TOKEN = os.getenv("GITHUB_RUNNER_TOKEN")
-RUNNER_IMAGE = "ghcr.io/github-runner-images/ubuntu-latest:latest"
-
-# Configuración de automatización
-AUTO_CREATE_RUNNERS = os.getenv("AUTO_CREATE_RUNNERS", "false").lower() == "true"
-RUNNER_CHECK_INTERVAL = int(os.getenv("RUNNER_CHECK_INTERVAL", "300"))  # Default 5 minutos
+RUNNER_IMAGE = os.getenv("RUNNER_IMAGE")
 
 if not GITHUB_RUNNER_TOKEN:
     logger.error("GITHUB_RUNNER_TOKEN es obligatorio")
     raise RuntimeError("GITHUB_RUNNER_TOKEN es obligatorio")
+
+if not RUNNER_IMAGE:
+    logger.error("RUNNER_IMAGE es obligatorio")
+    raise RuntimeError("RUNNER_IMAGE es obligatorio")
+
+# Configuración de automatización
+AUTO_CREATE_RUNNERS = os.getenv("AUTO_CREATE_RUNNERS", "false").lower() == "true"
+RUNNER_CHECK_INTERVAL = int(os.getenv("RUNNER_CHECK_INTERVAL", "300"))  # Default 5 minutos
 
 # Inicializar Lifecycle Manager
 lifecycle_manager = LifecycleManager(GITHUB_RUNNER_TOKEN, RUNNER_IMAGE)
@@ -83,14 +85,7 @@ else:
 
 @app.post("/runners/create", response_model=List[RunnerResponse])
 async def create_runners(request: RunnerRequest):
-    # Crea uno o más runners efímeros
     try:
-        if request.count < 1 or request.count > 10:
-            raise HTTPException(
-                status_code=400,
-                detail="El número de runners debe estar entre 1 y 10"
-            )
-
         runners = []
         for i in range(request.count):
             runner_name = request.runner_name
@@ -122,17 +117,9 @@ async def create_runners(request: RunnerRequest):
 
 @app.get("/runners/{runner_id}/status", response_model=RunnerStatus)
 async def get_runner_status(runner_id: str):
-    # Obtiene el estado de un runner específico
     try:
         status = lifecycle_manager.get_runner_status(runner_id)
-
-        if status["status"] == "not_found":
-            raise HTTPException(status_code=404, detail="Runner no encontrado")
-
         return RunnerStatus(**status)
-
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error obteniendo estado del runner {runner_id}: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")

@@ -29,9 +29,6 @@ RUN go build -o healthcheck healthcheck.go
 # Copiar código de la aplicación
 COPY . .
 
-# Exponer puerto
-EXPOSE 8000
-
 # Health check nativo en Go compilado
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ./healthcheck || exit 1
