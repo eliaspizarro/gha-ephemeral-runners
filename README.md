@@ -44,7 +44,7 @@ graph LR
 
 1. **Configurar token**:
    ```bash
-   echo "GITHUB_TOKEN=ghp_tu_token" > .env
+   echo "GITHUB_RUNNER_TOKEN=ghp_tu_token" > .env
    ```
 
 2. **Configurar registry**:
@@ -105,7 +105,7 @@ curl http://localhost:8080/health
    ```bash
    cp .env.example .env
    # Editar .env con tu configuración:
-   # - GITHUB_TOKEN: Token de GitHub
+   # - GITHUB_RUNNER_TOKEN: Token de GitHub para gestión de runners
    # - REGISTRY: Tu registry privado
    # - IMAGE_VERSION: Versión de imágenes (requerido)
    ```
@@ -151,7 +151,7 @@ curl http://localhost:8080/health
 
 ```bash
 # En tu .env
-GITHUB_TOKEN=ghp_tu_personal_access_token_aqui
+GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
 ```
 
 **El sistema usa tu PAT para:**
@@ -308,7 +308,7 @@ Para producción, usa Nginx Proxy Manager:
 ### Variables de Entorno
 
 #### Obligatorias
-- `GITHUB_TOKEN`: Token de GitHub con permisos
+- `GITHUB_RUNNER_TOKEN`: Token de GitHub para gestión de runners
 - `REGISTRY`: URL de tu registry privado
 - `IMAGE_VERSION`: Versión de imágenes
 

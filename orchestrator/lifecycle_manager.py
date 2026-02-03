@@ -10,8 +10,8 @@ from container_manager import ContainerManager
 logger = logging.getLogger(__name__)
 
 class LifecycleManager:
-    def __init__(self, github_token: str, runner_image: str = "ghcr.io/github-runner-images/ubuntu-latest:latest"):
-        self.token_generator = TokenGenerator(github_token)
+    def __init__(self, github_runner_token: str, runner_image: str = "ghcr.io/github-runner-images/ubuntu-latest:latest"):
+        self.token_generator = TokenGenerator(github_runner_token)
         self.container_manager = ContainerManager(runner_image)
         self.active_runners: Dict[str, Container] = {}
         self.monitoring = False

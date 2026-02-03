@@ -60,15 +60,15 @@ app = FastAPI(
 )
 
 # Variables de entorno obligatorias
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_RUNNER_TOKEN = os.getenv("GITHUB_RUNNER_TOKEN")
 RUNNER_IMAGE = "ghcr.io/github-runner-images/ubuntu-latest:latest"
 
-if not GITHUB_TOKEN:
-    logger.error("GITHUB_TOKEN es obligatorio")
-    raise RuntimeError("GITHUB_TOKEN es obligatorio")
+if not GITHUB_RUNNER_TOKEN:
+    logger.error("GITHUB_RUNNER_TOKEN es obligatorio")
+    raise RuntimeError("GITHUB_RUNNER_TOKEN es obligatorio")
 
 # Inicializar Lifecycle Manager
-lifecycle_manager = LifecycleManager(GITHUB_TOKEN, RUNNER_IMAGE)
+lifecycle_manager = LifecycleManager(GITHUB_RUNNER_TOKEN, RUNNER_IMAGE)
 
 @app.post("/runners/create", response_model=List[RunnerResponse])
 async def create_runners(request: RunnerRequest):

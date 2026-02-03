@@ -6,11 +6,11 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 class TokenGenerator:
-    def __init__(self, github_token: str):
-        self.github_token = github_token
+    def __init__(self, github_runner_token: str):
+        self.github_runner_token = github_runner_token
         self.api_base = "https://api.github.com"
         self.headers = {
-            "Authorization": f"token {github_token}",
+            "Authorization": f"token {github_runner_token}",
             "Accept": "application/vnd.github.v3+json"
         }
     
