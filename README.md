@@ -388,3 +388,4 @@ Los servicios incluyen health checks nativos en Go compilados:
 ## [Doc] Licencia
 
 MIT License - ver archivo LICENSE para detalles.
+# Updated workflows trigger patterns
