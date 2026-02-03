@@ -57,28 +57,29 @@ class DockerBuilder:
             return False, str(e)
     
     def build_image(self, image_name: str, context_path: str) -> bool:
-        full_image_name = f"{self.registry}/{image_name}:{self.image_version}"
-        cmd = ["docker", "build", "-t", full_image_name, context_path]
+        # Build con el tag del .env (latest, v1.2.3, etc.)
+        image_tag = f"{self.registry}/{image_name}:{self.image_version}"
+        cmd = ["docker", "build", "-t", image_tag, context_path]
         
         success, output = self.run_command(cmd)
         
         if success:
-            logger.info(f"Imagen {full_image_name} construida exitosamente")
+            logger.info(f"Imagen {image_name} construida exitosamente: {image_tag}")
         else:
             logger.error(f"Error construyendo imagen {image_name}")
         
         return success
     
     def push_image(self, image_name: str) -> bool:
-        full_image_name = f"{self.registry}/{image_name}:{self.image_version}"
-        cmd = ["docker", "push", full_image_name]
+        # Push con el tag del .env
+        image_tag = f"{self.registry}/{image_name}:{self.image_version}"
         
-        success, output = self.run_command(cmd)
+        success, _ = self.run_command(["docker", "push", image_tag])
         
         if success:
-            logger.info(f"Imagen {full_image_name} subida exitosamente")
+            logger.info(f"Imagen {image_tag} subida exitosamente")
         else:
-            logger.error(f"Error subiendo imagen {image_name}")
+            logger.error(f"Error subiendo imagen {image_tag}")
         
         return success
     
@@ -156,9 +157,9 @@ def main():
     if args.dry_run:
         logger.info("DRY RUN - Simulando ejecución:")
         for image_name, context_path in builder.images.items():
-            full_image_name = f"{builder.registry}/{image_name}:{builder.image_version}"
-            logger.info(f"  Build: {context_path} -> {full_image_name}")
-            logger.info(f"  Push: {full_image_name}")
+            image_tag = f"{builder.registry}/{image_name}:{builder.image_version}"
+            logger.info(f"  Build: {context_path} -> {image_tag}")
+            logger.info(f"  Push: {image_tag}")
         logger.info("DRY RUN completado")
         sys.exit(0)
     
