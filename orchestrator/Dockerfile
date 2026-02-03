@@ -15,11 +15,6 @@ RUN apt-get update && \
         golang-go \
         && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario no root y grupo docker
-RUN groupadd -r docker && \
-    groupadd -r orchestrator && \
-    useradd -r -g orchestrator -G docker -d /app -s /bin/bash orchestrator
-
 # Crear directorio de la aplicación
 WORKDIR /app
 
@@ -33,12 +28,6 @@ RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
 COPY . .
-
-# Cambiar permisos
-RUN chown -R orchestrator:orchestrator /app
-
-# Cambiar a usuario no root
-USER orchestrator
 
 # Exponer puerto
 EXPOSE 8000

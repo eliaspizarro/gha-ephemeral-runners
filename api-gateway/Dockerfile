@@ -15,10 +15,6 @@ RUN apt-get update && \
         golang-go \
         && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario no root
-RUN groupadd -r gateway && \
-    useradd -r -g gateway -d /app -s /bin/bash gateway
-
 # Crear directorio de la aplicación
 WORKDIR /app
 
@@ -32,12 +28,6 @@ RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
 COPY . .
-
-# Cambiar permisos
-RUN chown -R gateway:gateway /app
-
-# Cambiar a usuario no root
-USER gateway
 
 # Exponer puerto
 EXPOSE 8080
