@@ -249,15 +249,34 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Build y push de imágenes Docker para GHA Ephemeral Runners")
-    parser.add_argument("--registry", default="your-registry.com", help="Registry Docker")
     parser.add_argument("--verify-only", action="store_true", help="Solo verificar imágenes existentes")
     parser.add_argument("--cleanup", action="store_true", help="Limpiar imágenes después del build")
     parser.add_argument("--dry-run", action="store_true", help="Simular ejecución sin hacer cambios")
     
     args = parser.parse_args()
     
+    # Cargar variables del archivo .env
+    env_file = os.path.join(os.getcwd(), '.env')
+    if os.path.exists(env_file):
+        logger.info(f"Cargando variables desde {env_file}")
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key] = value
+                    logger.info(f"Variable cargada: {key}")
+    
+    # Obtener registry del entorno
+    registry = os.getenv("REGISTRY")
+    if not registry:
+        logger.error("REGISTRY no encontrado en el archivo .env")
+        sys.exit(1)
+    
+    logger.info(f"Usando registry: {registry}")
+    
     # Crear builder
-    builder = DockerBuilder(args.registry)
+    builder = DockerBuilder(registry)
     
     try:
         # Verificar solo
