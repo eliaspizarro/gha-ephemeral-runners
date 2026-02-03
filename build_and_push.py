@@ -59,7 +59,8 @@ class DockerBuilder:
     def build_image(self, image_name: str, context_path: str) -> bool:
         # Build con el tag del .env (latest, v1.2.3, etc.)
         image_tag = f"{self.registry}/{image_name}:{self.image_version}"
-        cmd = ["docker", "build", "-t", image_tag, context_path]
+        logger.info(f"Construyendo imagen: {image_tag}")
+        cmd = ["docker", "build", "--no-cache", "-t", image_tag, context_path]
         
         success, output = self.run_command(cmd)
         
@@ -73,6 +74,7 @@ class DockerBuilder:
     def push_image(self, image_name: str) -> bool:
         # Push con el tag del .env
         image_tag = f"{self.registry}/{image_name}:{self.image_version}"
+        logger.info(f"Subiendo imagen: {image_tag}")
         
         success, _ = self.run_command(["docker", "push", image_tag])
         
