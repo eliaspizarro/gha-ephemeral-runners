@@ -321,7 +321,7 @@ Para producción, usa Nginx Proxy Manager:
 - `API_GATEWAY_PORT`: Puerto interno del contenedor API Gateway (default: 8080)
 - `ORCHESTRATOR_PORT`: Puerto interno del contenedor Orchestrator (default: 8000)
 
-> **Nota**: Las variables `API_GATEWAY_PORT`, `ORCHESTRATOR_PORT` y `ORCHESTRATOR_URL` están configuradas en .env.example y usadas por los servicios.
+> **Nota**: Las variables `API_GATEWAY_PORT` y `ORCHESTRATOR_PORT` están configuradas en .env.example. `ORCHESTRATOR_URL` se construye dinámicamente usando `http://orchestrator:${ORCHESTRATOR_PORT}`.
 
 ### Build y Push de Imágenes
 

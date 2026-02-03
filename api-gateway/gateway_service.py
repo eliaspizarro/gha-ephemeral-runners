@@ -62,7 +62,8 @@ app = FastAPI(
 
 # Variables de entorno
 PORT = int(os.getenv("API_GATEWAY_PORT", "8080"))
-ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL")
+ORCHESTRATOR_PORT = os.getenv("ORCHESTRATOR_PORT", "8000")
+ORCHESTRATOR_URL = f"http://orchestrator:{ORCHESTRATOR_PORT}"
 API_KEY = os.getenv("API_KEY")
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "false").lower() == "true"
 MAX_REQUESTS = int(os.getenv("MAX_REQUESTS", "100"))
@@ -70,14 +71,14 @@ RATE_WINDOW = int(os.getenv("RATE_WINDOW", "60"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
 
 # Validar variables obligatorias
-if not ORCHESTRATOR_URL:
-    logger.error("ORCHESTRATOR_URL es obligatorio")
-    raise RuntimeError("ORCHESTRATOR_URL es obligatorio")
+if not ORCHESTRATOR_PORT:
+    logger.error("ORCHESTRATOR_PORT es obligatorio")
+    raise RuntimeError("ORCHESTRATOR_PORT es obligatorio")
 
-# Validar que ORCHESTRATOR_URL use el puerto correcto del orchestrator
-if "orchestrator:8000" not in ORCHESTRATOR_URL and "localhost:8000" not in ORCHESTRATOR_URL:
-    logger.warning(f"ORCHESTRATOR_URL debe usar el puerto 8000: {ORCHESTRATOR_URL}")
-    logger.warning("Verifica que ORCHESTRATOR_URL apunte al puerto del orchestrator")
+# Validar que ORCHESTRATOR_URL use el formato correcto
+if not ORCHESTRATOR_URL.startswith("http://orchestrator:"):
+    logger.warning(f"ORCHESTRATOR_URL debe apuntar a orchestrator: {ORCHESTRATOR_URL}")
+    logger.warning("Verifica que la configuración sea correcta")
 
 # Inicializar componentes
 router = RequestRouter(ORCHESTRATOR_URL, API_KEY)
