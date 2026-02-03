@@ -189,24 +189,25 @@ GITHUB_TOKEN=ghp_tu_personal_access_token_aqui
 
 ```mermaid
 sequenceDiagram
+    participant User as Usuario
     participant GH as GitHub
-    participant WF as Workflow
     participant SYS as Tu Sistema
     participant DOCKER as Docker
-    participant RUN as Runner
+    participant RUN as Runner Oficial
     
-    WF->>GH: Push detectado
-    GH->>WF: Busca runner (self-hosted)
-    WF->>SYS: ¿Hay runners disponibles?
-    SYS->>WF: No, crearé uno
-    SYS->>DOCKER: docker run runner-oficial
-    DOCKER->>SYS: Container creado
+    User->>GH: Push al repositorio
+    GH->>GH: Trigger workflow
+    GH->>SYS: Solicita runner self-hosted
+    SYS->>SYS: No hay runners disponibles
+    SYS->>DOCKER: docker run ghcr.io/github-runner-images/ubuntu-latest:latest
+    DOCKER->>SYS: Container runner creado
     SYS->>GH: Runner registrado
-    GH->>RUN: Asigna job
-    RUN->>WF: Ejecuta steps
-    WF->>RUN: Job completado
-    RUN->>DOCKER: Self-destruct
-    DOCKER->>SYS: Container eliminado
+    GH->>RUN: Asigna job al runner
+    RUN->>RUN: Ejecuta steps del workflow
+    RUN->>GH: Job completado
+    RUN->>DOCKER: Self-destruct del container
+    DOCKER->>SYS: Runner eliminado
+    SYS->>User: Workflow completado
 ```
 
 ### Verificación
@@ -222,99 +223,35 @@ curl http://localhost:8080/api/v1/health
 docker compose logs -f orchestrator
 ```
 
-## [API] API Reference
+## [API] Endpoints
 
-### [Target] Arquitectura de Endpoints
+### API Gateway (Puerto 8080)
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/v1/runners` | POST | Crear runners efímeros |
+| `/api/v1/runners` | GET | Listar todos los runners activos |
+| `/api/v1/runners/{id}` | GET | Ver estado de un runner específico |
+| `/api/v1/runners/{id}` | DELETE | Destruir un runner específico |
+| `/api/v1/runners/cleanup` | POST | Limpiar runners inactivos |
+| `/health` | GET | Health check básico |
+| `/api/v1/health` | GET | Health check completo |
+| `/docs` | GET | Documentación Swagger UI |
+| `/redoc` | GET | Documentación ReDoc |
 
-#### **Orquestador (Puerto 8000) - Motor Interno**
-| Endpoint | Método | Propósito |
-|----------|--------|-----------|
-| `/runners/create` | POST | **Crear runners** - Genera 1-10 runners efímeros |
-| `/runners/{runner_id}/status` | GET | **Ver estado** - Estado específico de un runner |
-| `/runners/{runner_id}` | DELETE | **Destruir runner** - Eliminar runner específico |
-| `/runners` | GET | **Listar runners** - Todos los runners activos |
-| `/runners/cleanup` | POST | **Limpiar inactivos** - Eliminar runners muertos |
-| `/health` | GET | **Health check** - Estado del orquestador |
+### Orquestador (Puerto 8000)
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/runners/create` | POST | Crear runners efímeros |
+| `/runners` | GET | Listar todos los runners activos |
+| `/runners/{id}/status` | GET | Ver estado de un runner específico |
+| `/runners/{id}` | DELETE | Destruir un runner específico |
+| `/runners/cleanup` | POST | Limpiar runners inactivos |
+| `/health` | GET | Health check con estado de runners |
 
-**[Tool] Funciones Clave del Orquestador:**
-- **Gestión de tokens**: Genera registration tokens temporales
-- **Ciclo de vida**: Crea, monitorea y destruye contenedores
-- **Monitoreo automático**: Background tasks para limpieza
-- **Integración Docker**: Gestión directa de contenedores
-
-#### **[Globe] API Gateway (Puerto 8080) - Fachada Pública**
-| Endpoint | Método | Propósito |
-|----------|--------|-----------|
-| `/api/v1/runners` | POST | **Crear runners** - Proxy al orquestador |
-| `/api/v1/runners/{runner_id}` | GET | **Ver estado** - Proxy al orquestador |
-| `/api/v1/runners/{runner_id}` | DELETE | **Destruir runner** - Proxy al orquestador |
-| `/api/v1/runners` | GET | **Listar runners** - Proxy al orquestador |
-| `/api/v1/runners/cleanup` | POST | **Limpiar inactivos** - Proxy al orquestador |
-| `/health` | GET | **Health básico** - Estado del gateway |
-| `/api/v1/health` | GET | **Health completo** - Gateway + orquestador |
-| `/docs` | GET | **Documentación** - Swagger UI |
-| `/redoc` | GET | **Documentación** - ReDoc |
-
-**[Shield] Funciones Clave del API Gateway:**
-- **Autenticación**: API key opcional
-- **Rate limiting**: Límite de solicitudes
-- **Logging**: Registro de todas las peticiones
-- **CORS**: Soporte para cross-origin
-- **Manejo de errores**: Respuestas estandarizadas
-- **Documentación**: Swagger/OpenAPI automática
-
-### Endpoints Principales
-
-#### `POST /api/v1/runners`
-Crea uno o más runners efímeros.
-
-```bash
-curl -X POST http://localhost:8080/api/v1/runners \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "scope": "repo",
-    "scope_name": "owner/repo",
-    "runner_name": "my-runner",
-    "labels": ["linux", "x64", "self-hosted"],
-    "count": 1
-  }'
-```
-
-**Parámetros:**
-- `scope`: `"repo"` o `"org"`
-- `scope_name`: `"owner/repo"` o `"organization"`
-- `runner_name`: Nombre único (opcional)
-- `labels`: Lista de labels (opcional)
-- `count`: Número de runners (1-10, default: 1)
-
-#### `GET /api/v1/runners`
-Lista todos los runners activos.
-
-```bash
-curl http://localhost:8080/api/v1/runners
-```
-
-#### `DELETE /api/v1/runners/{runner_id}`
-Elimina un runner específico.
-
-```bash
-curl -X DELETE http://localhost:8080/api/v1/runners/runner-123
-```
-
-#### `POST /api/v1/runners/cleanup`
-Limpia runners inactivos automáticamente.
-
-```bash
-curl -X POST http://localhost:8080/api/v1/runners/cleanup
-```
-
-#### `GET /health` y `GET /api/v1/health`
-Verificación de salud del sistema.
-
-```bash
-curl http://localhost:8080/health
-curl http://localhost:8080/api/v1/health
-```
+### Health Checks
+Los servicios incluyen health checks nativos en Go compilados:
+- **API Gateway**: `/healthz` (Docker), `/health` (básico), `/api/v1/health` (completo)
+- **Orquestador**: `/healthz` (Docker), `/health` (con runners)
 
 ## [Lock] Configuración Avanzada
 
@@ -407,169 +344,10 @@ your-registry.com/gha-api-gateway:latest
 your-registry.com/gha-api-gateway:v1.2.3
 ```
 
-### Health Checks de los Contenedores
-
-Los servicios incluyen health checks nativos en Go compilados para Docker:
-
-#### API Gateway
-- **Endpoint**: `/healthz` - Health check nativo para Docker
-- **Endpoint**: `/health` - Health check básico con información del servicio
-- **Endpoint**: `/api/v1/health` - Health check completo incluyendo orquestador
-- **Dockerfile**: Health check nativo con binario `./healthcheck`
-
-#### Orquestador
-- **Endpoint**: `/healthz` - Health check nativo para Docker  
-- **Endpoint**: `/health` - Health check con estado de runners activos
-- **Dockerfile**: Health check nativo con binario `./healthcheck`
-
-#### Verificación Local
-```bash
-# Verificar health checks en Docker Compose
-docker compose ps
-curl http://localhost:8080/healthz
-curl http://localhost:8000/healthz
-```
-
-### Troubleshooting
-
-### GitHub Actions Fallido
-
-1. **Verificar configuración de vars/secrets**:
-   ```bash
-   # En GitHub: Settings > Secrets and variables > Actions
-   # Variables: REGISTRY=your-registry.com
-   # Secrets: REGISTRY_USERNAME, REGISTRY_PASSWORD
-   ```
-
-2. **Verificar permisos del workflow**:
-   ```yaml
-   # En .github/workflows/build-and-push.yml
-   permissions:
-     contents: read  # Necesario para checkout
-   ```
-
-3. **Revisar logs del workflow**:
-   ```bash
-   # En GitHub: Actions > Select workflow run > Jobs
-   # Buscar errores en "Login to Registry" o "Build and push"
-   ```
-
-### Health Check Fallido
-
-1. **Verificar logs del contenedor**:
-   ```bash
-   docker compose logs api-gateway
-   docker compose logs orchestrator
-   ```
-
-2. **Verificar configuración del .env**:
-   ```bash
-   cat .env | grep -E "(ENABLE_AUTH|MAX_REQUESTS|RATE_WINDOW)"
-   ```
-
-3. **Probar health check manual**:
-   ```bash
-   curl -v http://localhost:8080/healthz
-   curl -v http://localhost:8000/healthz
-   ```
-
-### Runner no se registra
-
-1. **Verificar health checks**:
-   ```bash
-   curl http://localhost:8080/healthz
-   curl http://localhost:8000/healthz
-   ```
-
-2. **Verificar token**:
-   ```bash
-   curl http://localhost:8080/api/v1/health
-   echo $GITHUB_TOKEN  # ¿Tiene scopes correctos?
-   ```
-
-3. **Revisar logs**:
-   ```bash
-   docker compose logs orchestrator
-   ```
-
-4. **Confirmar scope_name**:
-   - Formato: `owner/repo` para repos
-   - Formato: `organization` para orgs
-
-### Contenedor no se inicia
-
-1. **Verificar Docker**:
-   ```bash
-   docker --version
-   docker info
-   ```
-
-2. **Verificar imágenes**:
-   ```bash
-   docker images | grep gha-
-   ```
-
-3. **Revisar logs de construcción**:
-   ```bash
-   docker compose build
-   ```
-
-### API Gateway no responde
-
-1. **Verificar puerto**:
-   ```bash
-   netstat -tlnp | grep 8080
-   ```
-
-2. **Verificar logs**:
-   ```bash
-   docker compose logs api-gateway
-   ```
-
-3. **Probar health check**:
-   ```bash
-   curl http://localhost:8080/health
-   ```
-
-### Monitoreo y Logs
-
-```bash
-# Logs del sistema
-docker compose logs -f
-
-# Logs específicos
-docker compose logs -f api-gateway
-docker compose logs -f orchestrator
-
-# Logs de runner específico
-docker logs runner-abc123
-
-# Ver runners activos
-curl http://localhost:8080/api/v1/runners
-```
-
-## [VS] Ventajas vs Runner Tradicional
-
-| Runner Tradicional | Esta Solución |
-|-------------------|---------------|
-| Manual | Automático |
-| Siempre encendido | Efímero |
-| Costo constante | Pago por uso |
-| Mantenimiento manual | Cero mantenimiento |
-| Un solo runner | Infinitos runners |
-
-## [List] ¿Cuándo usar esta solución?
-
-[OK] **Perfecto para**:
-- Proyectos con builds intermitentes
-- Equipos pequeños/medianos
-- Ahorro de costos
-- CI/CD moderno
-
-[X] **No ideal para**:
-- Builds que necesitan estado persistente
-- Requisitos de compliance muy estrictos
-- Necesidad de runners dedicados 24/7
+### Health Checks
+Los servicios incluyen health checks nativos en Go compilados:
+- **API Gateway**: `/healthz` (Docker), `/health` (básico), `/api/v1/health` (completo)
+- **Orquestador**: `/healthz` (Docker), `/health` (con runners)
 
 ## [Secure] Seguridad
 
