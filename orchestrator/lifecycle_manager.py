@@ -405,6 +405,8 @@ class LifecycleManager:
         """Cuenta runners activos para un repositorio específico."""
         try:
             active_count = 0
+            runners_to_remove = []
+            
             for runner_id, container in self.active_runners.items():
                 # Verificar si este runner pertenece al repo
                 # Los runners tienen labels o environment variables que indican el repo
@@ -416,8 +418,12 @@ class LifecycleManager:
                         if labels.get("repo") == repo or labels.get("scope_name") == repo:
                             active_count += 1
                 except:
-                    # Contenedor ya no existe, remover
-                    del self.active_runners[runner_id]
+                    # Contenedor ya no existe, marcar para remover
+                    runners_to_remove.append(runner_id)
+                    
+            # Remover runners que ya no existen (fuera del bucle)
+            for runner_id in runners_to_remove:
+                del self.active_runners[runner_id]
                     
             return active_count
             
