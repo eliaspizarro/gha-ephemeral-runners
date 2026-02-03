@@ -24,18 +24,34 @@ class DockerBuilder:
     def run_command(self, cmd: List[str]) -> Tuple[bool, str]:
         try:
             logger.info(f"Ejecutando: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
             
-            if result.returncode == 0:
+            # Ejecutar sin capturar salida para mostrar en tiempo real
+            process = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,  # Redirigir stderr a stdout
+                text=True, 
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            output_lines = []
+            
+            # Mostrar salida en tiempo real
+            for line in process.stdout:
+                print(line.rstrip())  # Mostrar línea inmediatamente
+                output_lines.append(line)
+            
+            # Esperar a que termine el proceso
+            process.wait()
+            
+            if process.returncode == 0:
                 logger.info("Comando ejecutado exitosamente")
-                return True, result.stdout
+                return True, ''.join(output_lines)
             else:
-                logger.error(f"Error en comando: {result.stderr}")
-                return False, result.stderr
+                logger.error(f"Error en comando (código {process.returncode})")
+                return False, ''.join(output_lines)
                 
-        except subprocess.TimeoutExpired:
-            logger.error("Timeout en ejecución del comando")
-            return False, "Timeout en ejecución"
         except Exception as e:
             logger.error(f"Error inesperado: {e}")
             return False, str(e)
