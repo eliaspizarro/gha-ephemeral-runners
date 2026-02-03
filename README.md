@@ -91,8 +91,6 @@ graph LR
    # Editar .env con tu configuración:
    # - GITHUB_TOKEN: Token de GitHub
    # - REGISTRY: Tu registry privado
-   # - REGISTRY_USERNAME: Usuario del registry
-   # - REGISTRY_PASSWORD: Contraseña del registry
    ```
 
 3. **Desplegar**:
@@ -108,9 +106,10 @@ graph LR
    # Editar .env con tu configuración
    ```
 
-2. **Construir y subir imágenes**:
+2. **Construir imágenes**:
    ```bash
-   python3 build_and_push.py --username TU_USUARIO --password TU_PASSWORD
+   # Precondición: docker login your-registry.com
+   python build_and_push.py
    ```
 
 ## [Tool] Token de GitHub
