@@ -12,10 +12,6 @@ on:
         default: false
         type: boolean
 
-env:
-  USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-  PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
