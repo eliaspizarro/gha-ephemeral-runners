@@ -65,10 +65,12 @@ graph LR
 
 **Opcional: Configurar puerto personalizado**
 ```bash
-# Si quieres usar un puerto diferente al 8080
-echo "API_GATEWAY_HOST_PORT=8083" >> .env
+# Si quieres usar un puerto diferente al 8080, edita docker-compose.yml:
+# ports:
+#   - "8090:8080"  # Cambia 8090 al puerto que desees
+
 docker compose up -d
-curl http://localhost:8083/health
+curl http://localhost:8080/health
 ```
 
 5. **Usar en tu workflow**:
@@ -222,10 +224,10 @@ sequenceDiagram
 
 ```bash
 # Ver runners activos
-curl http://localhost:${API_GATEWAY_HOST_PORT:-8080}/api/v1/runners
+curl http://localhost:8080/api/v1/runners
 
 # Ver salud del sistema
-curl http://localhost:${API_GATEWAY_HOST_PORT:-8080}/api/v1/health
+curl http://localhost:8080/api/v1/health
 
 # Ver logs
 docker compose logs -f orchestrator
@@ -271,9 +273,9 @@ Puedes configurar el puerto del host para el API Gateway según tus necesidades:
 # Sin configurar (usa default 8080)
 docker compose up -d
 
-# Con puerto personalizado
-echo "API_GATEWAY_HOST_PORT=8083" >> .env
-docker compose up -d  # Expone 8083:8080
+# Para cambiar puerto, edita docker-compose.yml y cambia:
+# ports:
+#   - "8090:8080"  # Puerto personalizado
 ```
 
 **Ejemplos de uso:**
@@ -294,14 +296,13 @@ Para producción, usa Nginx Proxy Manager:
    - Forward Port: `8080`
    - SSL Certificate: Habilitar
 
-2. **Autenticación**:
-   - Habilitar "Require Authentication"
-   - Crear usuario/contraseña
-
-3. **Configurar .env**:
+2. **Configurar .env**:
    ```bash
-   ENABLE_AUTH=false  # El proxy maneja la autenticación
+   # Para producción con dominio específico
    CORS_ORIGINS=https://yourdomain.com
+   
+   # Para desarrollo local/red (acepta cualquier origen)
+   # CORS_ORIGINS=*
    ```
 
 ### Variables de Entorno
@@ -312,12 +313,7 @@ Para producción, usa Nginx Proxy Manager:
 - `IMAGE_VERSION`: Versión de imágenes
 
 #### Opcionales
-- `API_KEY`: Clave para autenticación del API Gateway
-- `ENABLE_AUTH`: Habilitar autenticación (default: false)
-- `MAX_REQUESTS`: Límite de rate limiting (default: 100)
-- `RATE_WINDOW`: Ventana de rate limiting (default: 60)
-- `CORS_ORIGINS`: Orígenes permitidos para CORS
-- `API_GATEWAY_HOST_PORT`: Puerto host para API Gateway (default: 8080)
+- `CORS_ORIGINS`: Orígenes permitidos para CORS (default: "*" - acepta cualquier origen)
 - `API_GATEWAY_PORT`: Puerto interno del contenedor API Gateway (default: 8080)
 - `ORCHESTRATOR_PORT`: Puerto interno del contenedor Orchestrator (default: 8000)
 

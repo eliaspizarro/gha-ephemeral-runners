@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .request_router import RequestRouter
-from .authentication import AuthenticationLayer, RateLimiter
 
 # Configuración de logging
 logging.basicConfig(
@@ -64,11 +63,7 @@ app = FastAPI(
 PORT = int(os.getenv("API_GATEWAY_PORT", "8080"))
 ORCHESTRATOR_PORT = os.getenv("ORCHESTRATOR_PORT", "8000")
 ORCHESTRATOR_URL = f"http://orchestrator:{ORCHESTRATOR_PORT}"
-API_KEY = os.getenv("API_KEY")
-ENABLE_AUTH = os.getenv("ENABLE_AUTH", "false").lower() == "true"
-MAX_REQUESTS = int(os.getenv("MAX_REQUESTS", "100"))
-RATE_WINDOW = int(os.getenv("RATE_WINDOW", "60"))
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
 
 # Validar variables obligatorias
 if not ORCHESTRATOR_PORT:
@@ -81,9 +76,7 @@ if not ORCHESTRATOR_URL.startswith("http://orchestrator:"):
     logger.warning("Verifica que la configuración sea correcta")
 
 # Inicializar componentes
-router = RequestRouter(ORCHESTRATOR_URL, API_KEY)
-auth = AuthenticationLayer(API_KEY, ENABLE_AUTH)
-rate_limiter = RateLimiter(MAX_REQUESTS, RATE_WINDOW)
+router = RequestRouter(ORCHESTRATOR_URL)
 
 # Middleware CORS (configurable para diferentes escenarios)
 app.add_middleware(
@@ -101,7 +94,7 @@ async def logging_middleware(request: Request, call_next):
     start_time = datetime.utcnow()
     
     # Obtener información del cliente
-    client_info = auth.get_client_info(request)
+    client_info = {'method': request.method, 'url': str(request.url), 'ip': request.client.host if request.client else 'unknown'}
     
     # Log de solicitud
     logger.info(f"Solicitud: {client_info['method']} {client_info['url']} - IP: {client_info['ip']}")
@@ -116,26 +109,6 @@ async def logging_middleware(request: Request, call_next):
     logger.info(f"Respuesta: {response.status_code} - Duración: {process_time:.3f}s")
     
     return response
-
-# Middleware de rate limiting y autenticación
-@app.middleware("http")
-async def auth_rate_limit_middleware(request: Request, call_next):
-    """Middleware de autenticación y rate limiting."""
-    try:
-        # Rate limiting
-        await rate_limiter.check_rate_limit(request.client.host if request.client else "unknown")
-        
-        # Autenticación (solo para endpoints que lo requieren)
-        if request.url.path.startswith("/api/v1/"):
-            await auth.verify_api_key(request)
-        
-        return await call_next(request)
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en middleware: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del gateway")
 
 # Exception handler personalizado
 @app.exception_handler(HTTPException)
@@ -298,12 +271,7 @@ async def health_check():
         data={
             "status": "healthy",
             "service": "api-gateway",
-            "version": "1.0.0",
-            "auth_enabled": ENABLE_AUTH,
-            "rate_limiting": {
-                "max_requests": MAX_REQUESTS,
-                "rate_window": RATE_WINDOW
-            }
+            "version": "1.0.0"
         },
         message="Gateway funcionando correctamente"
     )
@@ -319,9 +287,6 @@ async def docker_health_check():
     """
     try:
         # Verificar configuración básica
-        if not ENABLE_AUTH or not MAX_REQUESTS or not RATE_WINDOW:
-            raise HTTPException(status_code=503, detail="Configuración del servicio inválida")
-        
         return APIResponse(
             data={
                 "status": "healthy",
@@ -355,12 +320,7 @@ async def full_health_check():
                 },
                 "orchestrator": orchestrator_health,
                 "system": {
-                    "status": "healthy" if orchestrator_health.get("status") == "healthy" else "degradado",
-                    "auth_enabled": ENABLE_AUTH,
-                    "rate_limiting": {
-                        "max_requests": MAX_REQUESTS,
-                        "window_seconds": RATE_WINDOW
-                    }
+                    "status": "healthy" if orchestrator_health.get("status") == "healthy" else "degradado"
                 }
             },
             message="Verificación de salud completada"
@@ -382,12 +342,7 @@ async def full_health_check():
                     "error": str(e)
                 },
                 "system": {
-                    "status": "degradado",
-                    "auth_enabled": ENABLE_AUTH,
-                    "rate_limiting": {
-                        "max_requests": MAX_REQUESTS,
-                        "window_seconds": RATE_WINDOW
-                    }
+                    "status": "degradado"
                 }
             },
             message="Error en verificación de salud"
@@ -399,15 +354,11 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Iniciando API Gateway")
     logger.info(f"Orquestador: {ORCHESTRATOR_URL}")
-    logger.info(f"Autenticación: {'habilitada' if ENABLE_AUTH else 'deshabilitada'}")
-    logger.info(f"Rate limiting: {MAX_REQUESTS} solicitudes por {RATE_WINDOW}s")
     
     yield
     
     # Shutdown
     logger.info("Deteniendo API Gateway")
-    # Limpiar rate limiter
-    rate_limiter.cleanup_old_entries()
     logger.info("API Gateway detenido")
 
 if __name__ == "__main__":

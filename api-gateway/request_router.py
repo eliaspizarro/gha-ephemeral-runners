@@ -7,9 +7,8 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 class RequestRouter:
-    def __init__(self, orchestrator_url: str, api_key: Optional[str] = None):
+    def __init__(self, orchestrator_url: str):
         self.orchestrator_url = orchestrator_url.rstrip('/')
-        self.api_key = api_key
         self.timeout = 30.0
         
         # Configurar headers base
@@ -17,9 +16,6 @@ class RequestRouter:
             "Content-Type": "application/json",
             "User-Agent": "gha-ephemeral-gateway/1.0.0"
         }
-        
-        if self.api_key:
-            self.headers["X-API-Key"] = self.api_key
     
     async def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         """

@@ -4,7 +4,7 @@ services:
     image: ${REGISTRY}/gha-api-gateway:${IMAGE_VERSION}
     container_name: gha-api-gateway
     ports:
-      - "${API_GATEWAY_HOST_PORT:-8080}:8080"
+      - "8080:8080"  # Puerto host:contenedor para API Gateway
     env_file:
       - .env
     depends_on:

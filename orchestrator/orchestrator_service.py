@@ -1,7 +1,8 @@
 import os
 import logging
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from .lifecycle_manager import LifecycleManager
 
@@ -34,11 +35,28 @@ class RunnerStatus(BaseModel):
     created: Optional[str] = None
     labels: Optional[Dict] = None
 
+# Lifecycle events (reemplaza @app.on_event deprecated)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Iniciando servicio de orquestador")
+    # Iniciar monitoreo automático
+    lifecycle_manager.start_monitoring()
+    logger.info("Servicio iniciado exitosamente")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Deteniendo servicio de orquestador")
+    lifecycle_manager.stop_monitoring()
+    logger.info("Servicio detenido")
+
 # Inicialización del servicio
 app = FastAPI(
     title="GitHub Actions Ephemeral Runners Orchestrator",
     description="Servicio para gestionar runners efímeros de GitHub Actions",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Variables de entorno obligatorias
@@ -52,32 +70,9 @@ if not GITHUB_TOKEN:
 # Inicializar Lifecycle Manager
 lifecycle_manager = LifecycleManager(GITHUB_TOKEN, RUNNER_IMAGE)
 
-@app.on_event("startup")
-async def startup_event():
-    """Inicialización del servicio."""
-    logger.info("Iniciando servicio de orquestador")
-    # Iniciar monitoreo automático
-    lifecycle_manager.start_monitoring()
-    logger.info("Servicio iniciado exitosamente")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Limpieza al detener el servicio."""
-    logger.info("Deteniendo servicio de orquestador")
-    lifecycle_manager.stop_monitoring()
-    logger.info("Servicio detenido")
-
 @app.post("/runners/create", response_model=List[RunnerResponse])
-async def create_runners(request: RunnerRequest, background_tasks: BackgroundTasks):
-    """
-    Crea uno o más runners efímeros.
-
-    Args:
-        request: Parámetros para crear runners
-
-    Returns:
-        Lista de runners creados
-    """
+async def create_runners(request: RunnerRequest):
+    # Crea uno o más runners efímeros
     try:
         if request.count < 1 or request.count > 10:
             raise HTTPException(
@@ -116,15 +111,7 @@ async def create_runners(request: RunnerRequest, background_tasks: BackgroundTas
 
 @app.get("/runners/{runner_id}/status", response_model=RunnerStatus)
 async def get_runner_status(runner_id: str):
-    """
-    Obtiene el estado de un runner específico.
-
-    Args:
-        runner_id: ID del runner
-
-    Returns:
-        Estado del runner
-    """
+    # Obtiene el estado de un runner específico
     try:
         status = lifecycle_manager.get_runner_status(runner_id)
 
@@ -141,15 +128,7 @@ async def get_runner_status(runner_id: str):
 
 @app.delete("/runners/{runner_id}")
 async def destroy_runner(runner_id: str):
-    """
-    Destruye un runner específico.
-
-    Args:
-        runner_id: ID del runner a destruir
-
-    Returns:
-        Mensaje de confirmación
-    """
+    # Destruye un runner específico
     try:
         success = lifecycle_manager.destroy_runner(runner_id)
 
@@ -169,12 +148,7 @@ async def destroy_runner(runner_id: str):
 
 @app.get("/runners", response_model=List[RunnerStatus])
 async def list_runners():
-    """
-    Lista todos los runners activos.
-
-    Returns:
-        Lista de runners activos
-    """
+    # Lista todos los runners activos
     try:
         runners = lifecycle_manager.list_active_runners()
         return [RunnerStatus(**runner) for runner in runners]
@@ -184,12 +158,7 @@ async def list_runners():
 
 @app.post("/runners/cleanup")
 async def cleanup_runners():
-    """
-    Limpia runners inactivos.
-
-    Returns:
-        Número de runners limpiados
-    """
+    # Limpia runners inactivos
     try:
         cleaned = lifecycle_manager.cleanup_inactive_runners()
         return {"cleaned_runners": cleaned, "message": f"Limpiados {cleaned} runners"}
@@ -199,12 +168,7 @@ async def cleanup_runners():
 
 @app.get("/health")
 async def health_check():
-    """
-    Verificación de salud del servicio.
-
-    Returns:
-        Estado del servicio
-    """
+    # Verificación de salud del servicio
     return {
         "status": "healthy",
         "service": "orchestrator",
@@ -214,13 +178,8 @@ async def health_check():
 
 @app.get("/healthz")
 async def docker_health_check():
-    """
-    Health check nativo para Docker.
-    Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
-
-    Returns:
-        Estado del servicio para Docker
-    """
+    # Health check nativo para Docker
+    # Retorna HTTP 200 para healthy, HTTP 503 para unhealthy
     try:
         # Verificar estado del lifecycle manager
         if not hasattr(lifecycle_manager, 'active_runners'):

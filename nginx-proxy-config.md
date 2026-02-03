@@ -6,21 +6,19 @@
 - **Domain**: `gha.yourdomain.com`
 - **Scheme**: `http`
 - **Forward Hostname/IP**: `localhost`
-- **Forward Port**: `8080` (o el puerto configurado en `API_GATEWAY_HOST_PORT`)
+- **Forward Port**: `8080`
 
 ### 2. SSL Certificate
 - Habilitar SSL Certificate
 - Seleccionar certificado Let's Encrypt
 
-### 3. Autenticación
-- Habilitar "Require Authentication"
-- Crear usuario y contraseña
-
-### 4. Configuración .env
+### 3. Configuración .env
 ```bash
-# Para producción detrás de proxy
-ENABLE_AUTH=false
+# Para producción con dominio específico
 CORS_ORIGINS=https://yourdomain.com
+
+# Para desarrollo local/red (acepta cualquier origen)
+# CORS_ORIGINS=*
 ```
 
 ## URLs de Acceso
