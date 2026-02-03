@@ -6,7 +6,7 @@
 - **Domain**: `gha.yourdomain.com`
 - **Scheme**: `http`
 - **Forward Hostname/IP**: `localhost`
-- **Forward Port**: `8080`
+- **Forward Port**: `8080` (o el puerto configurado en `API_GATEWAY_HOST_PORT`)
 
 ### 2. SSL Certificate
 - Habilitar SSL Certificate

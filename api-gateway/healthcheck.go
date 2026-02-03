@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Configuración
-	port := os.Getenv("PORT")
+	port := os.Getenv("API_GATEWAY_PORT")
 	if port == "" {
 		port = "8080"
 	}

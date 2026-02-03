@@ -63,6 +63,14 @@ graph LR
    curl http://localhost:8080/health
    ```
 
+**Opcional: Configurar puerto personalizado**
+```bash
+# Si quieres usar un puerto diferente al 8080
+echo "API_GATEWAY_HOST_PORT=8083" >> .env
+docker compose up -d
+curl http://localhost:8083/health
+```
+
 5. **Usar en tu workflow**:
    ```yaml
    # .github/workflows/ci.yml
@@ -214,10 +222,10 @@ sequenceDiagram
 
 ```bash
 # Ver runners activos
-curl http://localhost:8080/api/v1/runners
+curl http://localhost:${API_GATEWAY_HOST_PORT:-8080}/api/v1/runners
 
 # Ver salud del sistema
-curl http://localhost:8080/api/v1/health
+curl http://localhost:${API_GATEWAY_HOST_PORT:-8080}/api/v1/health
 
 # Ver logs
 docker compose logs -f orchestrator
@@ -255,6 +263,28 @@ Los servicios incluyen health checks nativos en Go compilados:
 
 ## [Lock] Configuración Avanzada
 
+### Configuración de Puertos
+
+Puedes configurar el puerto del host para el API Gateway según tus necesidades:
+
+```bash
+# Sin configurar (usa default 8080)
+docker compose up -d
+
+# Con puerto personalizado
+echo "API_GATEWAY_HOST_PORT=8083" >> .env
+docker compose up -d  # Expone 8083:8080
+```
+
+**Ejemplos de uso:**
+```bash
+# Verificar salud del sistema (puerto default)
+curl http://localhost:8080/health
+
+# Verificar salud del sistema (puerto personalizado)
+curl http://localhost:8083/health
+```
+
 ### Nginx Proxy Manager (Producción)
 
 Para producción, usa Nginx Proxy Manager:
@@ -287,8 +317,11 @@ Para producción, usa Nginx Proxy Manager:
 - `MAX_REQUESTS`: Límite de rate limiting (default: 100)
 - `RATE_WINDOW`: Ventana de rate limiting (default: 60)
 - `CORS_ORIGINS`: Orígenes permitidos para CORS
+- `API_GATEWAY_HOST_PORT`: Puerto host para API Gateway (default: 8080)
+- `API_GATEWAY_PORT`: Puerto interno del contenedor API Gateway (default: 8080)
+- `ORCHESTRATOR_PORT`: Puerto interno del contenedor Orchestrator (default: 8000)
 
-> **Nota**: Las variables `PORT` y `ORCHESTRATOR_URL` están hardcoded en docker-compose.yml y no necesitan configurarse en el .env.
+> **Nota**: Las variables `API_GATEWAY_PORT`, `ORCHESTRATOR_PORT` y `ORCHESTRATOR_URL` están configuradas en .env.example y usadas por los servicios.
 
 ### Build y Push de Imágenes
 

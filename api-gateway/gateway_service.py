@@ -61,7 +61,7 @@ app = FastAPI(
 )
 
 # Variables de entorno
-PORT = int(os.getenv("PORT", "8080"))
+PORT = int(os.getenv("API_GATEWAY_PORT", "8080"))
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL")
 API_KEY = os.getenv("API_KEY")
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "false").lower() == "true"
