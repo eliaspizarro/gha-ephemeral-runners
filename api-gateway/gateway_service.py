@@ -49,6 +49,22 @@ class ErrorResponse(APIResponse):
     status: str = "error"
     data: Optional[Dict] = None
 
+# Variables de entorno
+PORT = int(os.getenv("API_GATEWAY_PORT", "8080"))
+ORCHESTRATOR_PORT = os.getenv("ORCHESTRATOR_PORT", "8000")
+ORCHESTRATOR_URL = f"http://orchestrator:{ORCHESTRATOR_PORT}"
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+
+# Lifecycle events (reemplaza @app.on_event deprecated)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Iniciando API Gateway")
+    logger.info(f"Orquestador: {ORCHESTRATOR_URL}")
+    yield
+    # Shutdown
+    logger.info("Deteniendo API Gateway")
+
 # Inicialización del servicio
 app = FastAPI(
     title="GitHub Actions Ephemeral Runners API Gateway",
@@ -347,19 +363,6 @@ async def full_health_check():
             },
             message="Error en verificación de salud"
         )
-
-# Lifecycle events (reemplaza @app.on_event deprecated)
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Iniciando API Gateway")
-    logger.info(f"Orquestador: {ORCHESTRATOR_URL}")
-    
-    yield
-    
-    # Shutdown
-    logger.info("Deteniendo API Gateway")
-    logger.info("API Gateway detenido")
 
 if __name__ == "__main__":
     import uvicorn
