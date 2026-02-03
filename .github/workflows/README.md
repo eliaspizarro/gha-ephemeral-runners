@@ -1,32 +1,21 @@
 # GitHub Actions Workflows
 
-## Secrets Requeridos
+## Build and Push (`build-and-push.yml`)
 
-Para que los workflows funcionen correctamente con el registry privado, necesitas configurar los siguientes secrets en tu repositorio de GitHub:
+Workflow para construir y subir imágenes Docker al registry privado.
 
-### Registry Secrets
+### Trigger
 
-- **`REGISTRY_USERNAME`**: Usuario del registry
-- **`REGISTRY_PASSWORD`**: Contraseña o token de acceso al registry
+**Tags con formato `vX.Y.Z`** (ej: `v1.0.0`)
 
-### Configuración en GitHub
-
-1. Ve a tu repositorio en GitHub
-2. Settings → Secrets and variables → Actions
-3. Agrega los siguientes secrets:
-
-```
-REGISTRY_USERNAME = tu_usuario_registry
-REGISTRY_PASSWORD = tu_contraseña_o_token
+```bash
+# Crear tag y disparar workflow
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-## Workflows Disponibles
+### Funcionalidades
 
-### Build and Push (`build-and-push.yml`)
-
-**Trigger**: Tags con formato `vX.Y.Z` (ej: `v1.0.0`)
-
-**Funcionalidades**:
 - Build de imágenes Docker
 - Push al registry privado con autenticación
 - Tag versionado además de `latest`
@@ -34,58 +23,63 @@ REGISTRY_PASSWORD = tu_contraseña_o_token
 - Security scanning
 - SBOM generation
 
-**Uso**:
-```bash
-# Crear tag y disparar workflow
-git tag v1.0.0
-git push origin v1.0.0
+### Configuración Requerida
+
+#### Secrets en GitHub
+
+Ve a tu repositorio → Settings → Secrets and variables → Actions y agrega:
+
+```
+REGISTRY_USERNAME = tu_usuario_registry
+REGISTRY_PASSWORD = tu_contraseña_o_token
 ```
 
-## Variables de Entorno
+#### Variables en GitHub
 
-El workflow usa las siguientes variables:
+Ve a tu repositorio → Settings → Secrets and variables → Actions → Variables y agrega:
 
-- `REGISTRY`: Variable de configuración (configurable en GitHub Settings)
-- `REGISTRY_USERNAME`: Desde secrets
-- `REGISTRY_PASSWORD`: Desde secrets
+```
+REGISTRY = your-registry.com
+```
 
-### Configuración de REGISTRY
+### Flujo de Ejecución
 
-Para configurar `REGISTRY` como variable:
+1. **Checkout** del código
+2. **Setup Python** y dependencias
+3. **Setup Docker Buildx**
+4. **Login al Registry** con secrets
+5. **Build y Push** de imágenes
+6. **Tag versionado** (v1.2.3, latest)
+7. **Security Scanning** con Trivy
+8. **Registry Verification** de imágenes
 
-1. Ve a tu repositorio en GitHub
-2. Settings → Secrets and variables → Actions
-3. Variables → New repository variable
-4. Name: `REGISTRY`
-5. Value: `your-registry.com`
+### Imágenes Construidas
 
-## Troubleshooting
+- `gha-runner:latest` y `gha-runner:vX.Y.Z`
+- `gha-orchestrator:latest` y `gha-orchestrator:vX.Y.Z`
+- `gha-api-gateway:latest` y `gha-api-gateway:vX.Y.Z`
 
-### Error de Autenticación
+### Troubleshooting
 
-Si obtienes errores de autenticación:
+#### Error de Autenticación
 
 1. Verifica que los secrets estén configurados correctamente
 2. Confirma que el usuario tenga permisos de push al registry
 3. Revisa que la contraseña/token sea válida
 
-### Registry No Accesible
-
-El workflow incluye verificación de acceso al registry. Si falla:
+#### Registry No Accesible
 
 1. Verifica conectividad desde GitHub Actions a tu registry
 2. Confirma que el registry permita conexiones externas
 3. Revisa firewall o configuraciones de red
 
-### Build Falla
-
-Si el build falla:
+#### Build Falla
 
 1. Revisa los logs del workflow en GitHub
 2. Verifica que los Dockerfiles sean válidos
 3. Confirma que el contexto de build sea correcto
 
-## Security Considerations
+### Security Considerations
 
 - Los secrets nunca se muestran en los logs
 - Las credenciales se usan solo durante el login

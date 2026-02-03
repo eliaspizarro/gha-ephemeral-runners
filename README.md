@@ -333,31 +333,48 @@ Para producción, usa Nginx Proxy Manager:
 #### Obligatorias
 - `GITHUB_TOKEN`: Token de GitHub con permisos
 - `REGISTRY`: URL de tu registry privado
-- `REGISTRY_USERNAME`: Usuario del registry
-- `REGISTRY_PASSWORD`: Contraseña del registry
 
 #### Opcionales
-- `PORT`: Puerto del API Gateway (default: 8080)
-- `API_KEY`: Clave para autenticación
+- `API_KEY`: Clave para autenticación del API Gateway
 - `ENABLE_AUTH`: Habilitar autenticación (default: false)
 - `MAX_REQUESTS`: Límite de rate limiting (default: 100)
 - `RATE_WINDOW`: Ventana de rate limiting (default: 60)
-- `RUNNER_IMAGE`: Imagen para runners (default: gha-runner:latest)
-- `IDLE_TIMEOUT`: Timeout de inactividad (default: 3600)
 - `IMAGE_VERSION`: Versión de imágenes (default: latest)
+- `RUNNER_IMAGE`: Imagen para runners (usa ${REGISTRY}/gha-runner:${IMAGE_VERSION})
+
+> **Nota**: Las variables `PORT` y `ORCHESTRATOR_URL` están hardcoded en docker-compose.yml y no necesitan configurarse en el .env.
 
 ### Build and Push Script
 
+Script para construir y subir imágenes Docker al registry.
+
+#### Uso Local
+
 ```bash
-python3 build_and_push.py [opciones]
+# Precondición: docker login your-registry.com
+python build_and_push.py
 
 # Opciones:
---username TU_USUARIO      # Usuario del registry
---password TU_PASSWORD      # Contraseña del registry
 --verify-only              # Solo verificar imágenes
 --dry-run                  # Simular ejecución
 --cleanup                  # Limpiar imágenes después
 ```
+
+#### Uso con GitHub Actions
+
+Para automatizar el build y push, usa el workflow `.github/workflows/build-and-push.yml`:
+
+```bash
+# Crear tag y disparar workflow
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+**Configuración requerida en GitHub:**
+- **Secrets**: `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`
+- **Variables**: `REGISTRY`
+
+Ver más detalles en [`.github/workflows/README.md`](./.github/workflows/README.md).
 
 ## 🔍 Troubleshooting
 
