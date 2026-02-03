@@ -47,17 +47,23 @@ graph LR
    echo "GITHUB_TOKEN=ghp_tu_token" > .env
    ```
 
-2. **Inicia el sistema**:
+2. **Configurar registry**:
+   ```bash
+   echo "REGISTRY=your-registry.com" >> .env
+   echo "IMAGE_VERSION=v1.2.3" >> .env
+   ```
+
+3. **Inicia el sistema**:
    ```bash
    docker compose up -d
    ```
 
-3. **Verificar funcionamiento**:
+4. **Verificar funcionamiento**:
    ```bash
    curl http://localhost:8080/health
    ```
 
-4. **Usar en tu workflow**:
+5. **Usar en tu workflow**:
    ```yaml
    # .github/workflows/ci.yml
    name: CI
@@ -70,7 +76,7 @@ graph LR
        - run: echo "Running on ephemeral runner!"
    ```
 
-5. **Hacer push y ver la magia**:
+6. **Hacer push y ver la magia**:
    ```bash
    git push origin main
    ```
@@ -91,6 +97,7 @@ graph LR
    # Editar .env con tu configuración:
    # - GITHUB_TOKEN: Token de GitHub
    # - REGISTRY: Tu registry privado
+   # - IMAGE_VERSION: Versión de imágenes (requerido)
    ```
 
 3. **Desplegar**:
@@ -103,7 +110,9 @@ graph LR
 1. **Configurar variables de entorno**:
    ```bash
    cp .env.example .env
-   # Editar .env con tu configuración
+   # Editar .env con tu configuración:
+   # - REGISTRY: Tu registry privado
+   # - IMAGE_VERSION: Versión de imágenes (requerido)
    ```
 
 2. **Construir imágenes**:
@@ -343,37 +352,56 @@ Para producción, usa Nginx Proxy Manager:
 
 > **Nota**: Las variables `PORT` y `ORCHESTRATOR_URL` están hardcoded en docker-compose.yml y no necesitan configurarse en el .env.
 
-### Build and Push Script
+### Build y Push de Imágenes
 
-Script para construir y subir imágenes Docker al registry.
+### Uso Local con Script Python
 
-#### Uso Local
+Para desarrollo local, usa el script `build_and_push.py`. El script lee las variables del archivo `.env` en la raíz del repositorio (el mismo que usa Docker Compose):
 
 ```bash
 # Precondición: docker login your-registry.com
+
+# Configurar .env (si no existe)
+cp .env.example .env
+# Editar .env con:
+# - REGISTRY=your-registry.com
+# - IMAGE_VERSION=v1.2.3
+
+# Build y push
 python build_and_push.py
 
-# Opciones:
---verify-only              # Solo verificar imágenes
---dry-run                  # Simular ejecución
---cleanup                  # Limpiar imágenes después
+# Solo verificar imágenes locales
+python build_and_push.py --verify-only
+
+# Simular ejecución
+python build_and_push.py --dry-run
+
+# Con limpieza de imágenes
+python build_and_push.py --cleanup
 ```
 
-#### Uso con GitHub Actions
+### GitHub Actions CI/CD
 
-Para automatizar el build y push, usa el workflow `.github/workflows/build-and-push.yml`:
+El workflow `build-and-push.yml` automatiza la construcción y publicación:
+
+- **Trigger**: Tags `vX.Y.Z`
+- **Build**: Construye 3 imágenes Docker
+- **Plataforma**: `linux/amd64` (solo x86_64)
+- **Tags**: `:latest` y `:versión`
+- **Actions**: Usa docker/setup-buildx-action@v3, docker/login-action@v3, docker/build-push-action@v6
+
+### Imágenes Construidas
 
 ```bash
-# Crear tag y disparar workflow
-git tag v1.0.0
-git push origin v1.0.0
+your-registry.com/gha-runner:latest
+your-registry.com/gha-runner:v1.2.3
+
+your-registry.com/gha-orchestrator:latest
+your-registry.com/gha-orchestrator:v1.2.3
+
+your-registry.com/gha-api-gateway:latest
+your-registry.com/gha-api-gateway:v1.2.3
 ```
-
-**Configuración requerida en GitHub:**
-- **Secrets**: `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`
-- **Variables**: `REGISTRY`
-
-Ver más detalles en [`.github/workflows/README.md`](./.github/workflows/README.md).
 
 ## 🔍 Troubleshooting
 

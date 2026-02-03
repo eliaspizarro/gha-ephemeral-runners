@@ -1,87 +1,74 @@
 # GitHub Actions Workflows
 
-## Build and Push (`build-and-push.yml`)
-
-Workflow para construir y subir imágenes Docker al registry privado.
+## Build and Push Workflow
 
 ### Trigger
-
-**Tags con formato `vX.Y.Z`** (ej: `v1.0.0`)
-
-```bash
-# Crear tag y disparar workflow
-git tag v1.0.0
-git push origin v1.0.0
-```
+- **Tags semánticos**: Se activa automáticamente con tags `vX.Y.Z` (ej: `v1.2.3`)
 
 ### Funcionalidades
-
-- Build de imágenes Docker
-- Push al registry privado con autenticación
-- Tag versionado además de `latest`
-- Verificación de acceso al registry
-- Security scanning
-- SBOM generation
+- **Build x86_64**: Construye imágenes para `linux/amd64`
+- **Tags dobles**: Publica con tags `:latest` y `:versión`
+- **Login automático**: Usa credenciales del registry
 
 ### Configuración Requerida
 
-#### Secrets en GitHub
-
-Ve a tu repositorio → Settings → Secrets and variables → Actions y agrega:
-
+#### Variables de Entorno (Repository Settings > Variables)
 ```
-REGISTRY_USERNAME = tu_usuario_registry
-REGISTRY_PASSWORD = tu_contraseña_o_token
+REGISTRY=your-registry.com
 ```
 
-#### Variables en GitHub
-
-Ve a tu repositorio → Settings → Secrets and variables → Actions → Variables y agrega:
-
+#### Secrets (Repository Settings > Secrets)
 ```
-REGISTRY = your-registry.com
+REGISTRY_USERNAME=your_registry_username
+REGISTRY_PASSWORD=your_registry_password_or_token
 ```
 
 ### Flujo de Ejecución
 
-1. **Checkout** del código
-2. **Setup Python** y dependencias
-3. **Setup Docker Buildx**
-4. **Login al Registry** con secrets
-5. **Build y Push** de imágenes
-6. **Tag versionado** (v1.2.3, latest)
-7. **Security Scanning** con Trivy
-8. **Registry Verification** de imágenes
+1. **Docker Buildx** - Configura build multiplataforma
+2. **Login** - Autenticación en el registry
+3. **Build Images** - Construye las 3 imágenes:
+   - `gha-runner`
+   - `gha-orchestrator` 
+   - `gha-api-gateway`
 
-### Imágenes Construidas
+### Imágenes Generadas
 
-- `gha-runner:latest` y `gha-runner:vX.Y.Z`
-- `gha-orchestrator:latest` y `gha-orchestrator:vX.Y.Z`
-- `gha-api-gateway:latest` y `gha-api-gateway:vX.Y.Z`
+Para cada servicio se generan dos tags:
+```
+your-registry.com/gha-runner:latest
+your-registry.com/gha-runner:v1.2.3
 
-### Troubleshooting
+your-registry.com/gha-orchestrator:latest
+your-registry.com/gha-orchestrator:v1.2.3
 
-#### Error de Autenticación
+your-registry.com/gha-api-gateway:latest
+your-registry.com/gha-api-gateway:v1.2.3
+```
 
-1. Verifica que los secrets estén configurados correctamente
-2. Confirma que el usuario tenga permisos de push al registry
-3. Revisa que la contraseña/token sea válida
+## Release Workflow
 
-#### Registry No Accesible
+### Trigger
+- **Tags semánticos**: Se activa con tags `vX.Y.Z` (ej: `v1.2.3`)
 
-1. Verifica conectividad desde GitHub Actions a tu registry
-2. Confirma que el registry permita conexiones externas
-3. Revisa firewall o configuraciones de red
+### Funcionalidades
+- **Crea GitHub Release** con changelog
+- **Genera changelog** desde el tag anterior
+- **Incluye assets** por defecto
+- **Publica automáticamente**
 
-#### Build Falla
+### Configuración Requerida
 
-1. Revisa los logs del workflow en GitHub
-2. Verifica que los Dockerfiles sean válidos
-3. Confirma que el contexto de build sea correcto
+#### Permisos del Workflow
+El workflow incluye permisos necesarios en el archivo `release.yml`:
+```yaml
+permissions:
+  contents: write  # Para crear releases
+```
 
-### Security Considerations
+### Flujo de Ejecución
 
-- Los secrets nunca se muestran en los logs
-- Las credenciales se usan solo durante el login
-- Las imágenes se marcan como privadas en el registry
-- El workflow solo se ejecuta para tags versionados
+1. **Checkout** - Descarga el código con historial completo
+2. **Get previous tag** - Identifica tag anterior para changelog
+3. **Generate changelog** - Genera lista de cambios
+4. **Create Release** - Publica release con changelog e instrucciones

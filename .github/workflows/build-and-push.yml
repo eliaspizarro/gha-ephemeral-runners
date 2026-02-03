@@ -4,13 +4,6 @@ on:
   push:
     tags: 
       - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:
-    inputs:
-      cleanup:
-        description: 'Cleanup images after build'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   build-and-push:
@@ -20,19 +13,6 @@ jobs:
       packages: write
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        # El script no tiene dependencias externas, usa subprocess nativo
-    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
@@ -43,119 +23,32 @@ jobs:
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
     
-    - name: Verify Registry Access
-      run: |
-        echo "Verificando acceso al registry privado..."
-        if ! docker run --rm --network=host alpine/curl:latest curl -f https://${{ vars.REGISTRY }}/v2/ -s; then
-          echo "Registry no accesible, pero continuando (puede requerir auth)"
-        fi
+    - name: Build and push runner image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./runner
+        push: true
+        tags: |
+          ${{ vars.REGISTRY }}/gha-runner:latest
+          ${{ vars.REGISTRY }}/gha-runner:${{ github.ref_name }}
+        platforms: linux/amd64
     
-    - name: Set Environment Variables
-      run: |
-        echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> $GITHUB_ENV
-        echo "REGISTRY_PASSWORD=${{ secrets.REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+    - name: Build and push orchestrator image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./orchestrator
+        push: true
+        tags: |
+          ${{ vars.REGISTRY }}/gha-orchestrator:latest
+          ${{ vars.REGISTRY }}/gha-orchestrator:${{ github.ref_name }}
+        platforms: linux/amd64
     
-    - name: Extract version from tag
-      run: |
-        echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-        echo "Building version: $VERSION"
-    
-    - name: Build and push images
-      run: |
-        python build_and_push.py \
-          --registry ${{ vars.REGISTRY }} \
-          --username ${{ secrets.REGISTRY_USERNAME }} \
-          --password ${{ secrets.REGISTRY_PASSWORD }} \
-          ${{ github.event.inputs.cleanup == 'true' && '--cleanup' || '' }}
-    
-    - name: Tag images with version
-      run: |
-        echo "Tagging images with version ${{ env.VERSION }}"
-        for image in gha-runner gha-orchestrator gha-api-gateway; do
-          docker tag ${{ vars.REGISTRY }}/$image:latest ${{ vars.REGISTRY }}/$image:${{ env.VERSION }}
-          docker push ${{ vars.REGISTRY }}/$image:${{ env.VERSION }}
-          echo "Tagged ${{ vars.REGISTRY }}/$image:${{ env.VERSION }}"
-        done
-    
-    - name: Verify images
-      run: |
-        python build_and_push.py --registry ${{ vars.REGISTRY }} --verify-only
-    
-    - name: Generate SBOM
-      run: |
-        echo "## Software Bill of Materials (SBOM)" >> $GITHUB_STEP_SUMMARY
-        echo "### Images Built:" >> $GITHUB_STEP_SUMMARY
-        echo "- Version: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Tag: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        for image in gha-runner gha-orchestrator gha-api-gateway; do
-          echo "- ${{ vars.REGISTRY }}/$image:latest" >> $GITHUB_STEP_SUMMARY
-          echo "- ${{ vars.REGISTRY }}/$image:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        done
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Build Information:" >> $GITHUB_STEP_SUMMARY
-        echo "- Build Date: $(date -u)" >> $GITHUB_STEP_SUMMARY
-        echo "- Git SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Python Version: $(python --version)" >> $GITHUB_STEP_SUMMARY
-        echo "- Docker Version: $(docker --version)" >> $GITHUB_STEP_SUMMARY
-    
-    - name: Security scan
-      run: |
-        echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
-        echo "### Image Security:" >> $GITHUB_STEP_SUMMARY
-        for image in gha-runner gha-orchestrator gha-api-gateway; do
-          echo "#### ${{ vars.REGISTRY }}/$image:latest" >> $GITHUB_STEP_SUMMARY
-          echo "Scanning for vulnerabilities..." >> $GITHUB_STEP_SUMMARY
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:latest image ${{ vars.REGISTRY }}/$image:latest \
-            --format json --output /tmp/trivy-$(basename $image).json || true
-          if [ -f "/tmp/trivy-$(basename $image).json" ]; then
-            echo "Scan completed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Scan skipped or failed" >> $GITHUB_STEP_SUMMARY
-          fi
-        done
-    
-    - name: Registry verification
-      run: |
-        echo "## Registry Verification" >> $GITHUB_STEP_SUMMARY
-        echo "### Image Availability:" >> $GITHUB_STEP_SUMMARY
-        for image in gha-runner gha-orchestrator gha-api-gateway; do
-          echo "#### ${{ vars.REGISTRY }}/$image:latest" >> $GITHUB_STEP_SUMMARY
-          if docker manifest inspect ${{ vars.REGISTRY }}/$image:latest > /dev/null 2>&1; then
-            echo "✅ Available" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Not available" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "#### ${{ vars.REGISTRY }}/$image:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          if docker manifest inspect ${{ vars.REGISTRY }}/$image:${{ env.VERSION }} > /dev/null 2>&1; then
-            echo "✅ Available" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Not available" >> $GITHUB_STEP_SUMMARY
-          fi
-        done
-    
-    - name: Performance metrics
-      run: |
-        echo "## Performance Metrics" >> $GITHUB_STEP_SUMMARY
-        echo "### Build Performance:" >> $GITHUB_STEP_SUMMARY
-        echo "- Total Build Time: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Runner: ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Python Version: $(python --version)" >> $GITHUB_STEP_SUMMARY
-        echo "- Docker Info: $(docker info --format '{{.ServerVersion}}')" >> $GITHUB_STEP_SUMMARY
-    
-    - name: Final Summary
-      run: |
-        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Registry: ${{ vars.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Version: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Tag: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Images built:" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-runner:latest" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-runner:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-orchestrator:latest" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-orchestrator:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-api-gateway:latest" >> $GITHUB_STEP_SUMMARY
-        echo "  - ${{ vars.REGISTRY }}/gha-api-gateway:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Build Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+    - name: Build and push api-gateway image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./api-gateway
+        push: true
+        tags: |
+          ${{ vars.REGISTRY }}/gha-api-gateway:latest
+          ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }}
+        platforms: linux/amd64
