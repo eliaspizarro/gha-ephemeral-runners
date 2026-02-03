@@ -35,6 +35,7 @@ jobs:
           ${{ vars.REGISTRY }}/gha-orchestrator:latest
           ${{ vars.REGISTRY }}/gha-orchestrator:${{ github.ref_name }}
         platforms: linux/amd64
+        provenance: false
     
     - name: Build and push api-gateway image
       uses: docker/build-push-action@v6
@@ -45,6 +46,7 @@ jobs:
           ${{ vars.REGISTRY }}/gha-api-gateway:latest
           ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }}
         platforms: linux/amd64
+        provenance: false
     
     - name: Verify images exist
       uses: cloudposse/github-action-docker-image-exists@main
