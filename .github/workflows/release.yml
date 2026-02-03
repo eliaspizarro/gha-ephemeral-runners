@@ -42,33 +42,16 @@ jobs:
         body: |
           ## 🚀 Release ${{ github.ref_name }}
           
-          ### 📋 Changes since ${{ env.prev_tag || 'initial release' }}
+          ### 📋 Cambios desde ${{ env.prev_tag || 'release inicial' }}
           
           ${{ steps.changelog.outputs.changelog }}
           
-          ### 🐳 Docker Images
+          ### 🐳 Imágenes Docker
           
-          Images are available at:
+          Las imágenes están disponibles en:
           - `gha-runner:${{ github.ref_name }}`
           - `gha-orchestrator:${{ github.ref_name }}`
           - `gha-api-gateway:${{ github.ref_name }}`
           
-          ### 📦 Installation
-          
-          ```bash
-          # Clone and configure
-          git clone https://github.com/eliaspizarro/gha-ephemeral-runners.git
-          cd gha-ephemeral-runners
-          cp .env.example .env
-          
-          # Edit .env with your configuration
-          # - GITHUB_TOKEN: Your GitHub token
-          # - REGISTRY: Your registry URL
-          
-          # Deploy
-          docker compose up -d
-          ```
         draft: false
         prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

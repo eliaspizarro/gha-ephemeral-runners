@@ -1,7 +1,7 @@
 services:
   # API Gateway
   api-gateway:
-    image: ${REGISTRY}/gha-api-gateway:${IMAGE_VERSION:-latest}
+    image: ${REGISTRY}/gha-api-gateway:${IMAGE_VERSION}
     container_name: gha-api-gateway
     ports:
       - "8080:8080"
@@ -19,7 +19,7 @@ services:
       - gha-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -27,19 +27,19 @@ services:
 
   # Orquestador
   orchestrator:
-    image: ${REGISTRY}/gha-orchestrator:${IMAGE_VERSION:-latest}
+    image: ${REGISTRY}/gha-orchestrator:${IMAGE_VERSION}
     container_name: gha-orchestrator
     environment:
       - PORT=8000
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - RUNNER_IMAGE=${RUNNER_IMAGE:-${REGISTRY}/gha-runner:${IMAGE_VERSION:-latest}}
+      - RUNNER_IMAGE=${REGISTRY}/gha-runner:${IMAGE_VERSION}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - gha-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3

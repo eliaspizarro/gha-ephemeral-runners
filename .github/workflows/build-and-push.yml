@@ -52,3 +52,12 @@ jobs:
           ${{ vars.REGISTRY }}/gha-api-gateway:latest
           ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }}
         platforms: linux/amd64
+    
+    - name: Verify health checks
+      run: |
+        echo "Verificando health checks de las imágenes construidas..."
+        for image in gha-runner gha-orchestrator gha-api-gateway; do
+          echo "Verificando health check para ${{ vars.REGISTRY }}/$image:${{ github.ref_name }}"
+          docker run --rm ${{ vars.REGISTRY }}/$image:${{ github.ref_name }} curl -f http://localhost:${{ image == 'gha-orchestrator' && echo '8000' || echo '8080' }/healthz || exit 1
+        done
+        echo "Todos los health checks verificados exitosamente"

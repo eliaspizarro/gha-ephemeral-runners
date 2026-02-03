@@ -283,7 +283,7 @@ async def health_check():
     Verificación básica de salud del gateway.
     
     Returns:
-        Estado del gateway
+        Estado del servicio
     """
     return APIResponse(
         data={
@@ -293,11 +293,37 @@ async def health_check():
             "auth_enabled": ENABLE_AUTH,
             "rate_limiting": {
                 "max_requests": MAX_REQUESTS,
-                "window_seconds": RATE_WINDOW
+                "rate_window": RATE_WINDOW
             }
         },
         message="Gateway funcionando correctamente"
     )
+
+@app.get("/healthz", response_model=APIResponse)
+async def kubernetes_health_check():
+    """
+    Health check nativo para Kubernetes.
+    Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
+    
+    Returns:
+        Estado del servicio para Kubernetes
+    """
+    try:
+        # Verificar configuración básica
+        if not ENABLE_AUTH or not MAX_REQUESTS or not RATE_WINDOW:
+            raise HTTPException(status_code=503, detail="Configuración del servicio inválida")
+        
+        return APIResponse(
+            data={
+                "status": "healthy",
+                "service": "api-gateway",
+                "version": "1.0.0"
+            },
+            message="Gateway saludable"
+        )
+    except Exception as e:
+        logger.error(f"Health check falló: {e}")
+        raise HTTPException(status_code=503, detail="Servicio no saludable")
 
 @app.get("/api/v1/health", response_model=APIResponse)
 async def full_health_check():
@@ -320,7 +346,7 @@ async def full_health_check():
                 },
                 "orchestrator": orchestrator_health,
                 "system": {
-                    "status": "healthy" if orchestrator_health.get("status") == "healthy" else "degraded",
+                    "status": "healthy" if orchestrator_health.get("status") == "healthy" else "degradado",
                     "auth_enabled": ENABLE_AUTH,
                     "rate_limiting": {
                         "max_requests": MAX_REQUESTS,
@@ -347,10 +373,15 @@ async def full_health_check():
                     "error": str(e)
                 },
                 "system": {
-                    "status": "degraded"
+                    "status": "degradado",
+                    "auth_enabled": ENABLE_AUTH,
+                    "rate_limiting": {
+                        "max_requests": MAX_REQUESTS,
+                        "window_seconds": RATE_WINDOW
+                    }
                 }
             },
-            message="Sistema en estado degradado"
+            message="Error en verificación de salud"
         )
 
 # Eventos de startup/shutdown

@@ -341,13 +341,13 @@ Para producción, usa Nginx Proxy Manager:
 #### Obligatorias
 - `GITHUB_TOKEN`: Token de GitHub con permisos
 - `REGISTRY`: URL de tu registry privado
+- `IMAGE_VERSION`: Versión de imágenes
 
 #### Opcionales
 - `API_KEY`: Clave para autenticación del API Gateway
 - `ENABLE_AUTH`: Habilitar autenticación (default: false)
 - `MAX_REQUESTS`: Límite de rate limiting (default: 100)
 - `RATE_WINDOW`: Ventana de rate limiting (default: 60)
-- `IMAGE_VERSION`: Versión de imágenes (default: latest)
 - `RUNNER_IMAGE`: Imagen para runners (usa ${REGISTRY}/gha-runner:${IMAGE_VERSION})
 
 > **Nota**: Las variables `PORT` y `ORCHESTRATOR_URL` están hardcoded en docker-compose.yml y no necesitan configurarse en el .env.
@@ -376,6 +376,9 @@ python build_and_push.py --verify-only
 # Simular ejecución
 python build_and_push.py --dry-run
 
+# Verificar health checks
+python build_and_push.py --health-check
+
 # Con limpieza de imágenes
 python build_and_push.py --cleanup
 ```
@@ -387,7 +390,7 @@ El workflow `build-and-push.yml` automatiza la construcción y publicación:
 - **Trigger**: Tags `vX.Y.Z`
 - **Build**: Construye 3 imágenes Docker
 - **Plataforma**: `linux/amd64` (solo x86_64)
-- **Tags**: `:latest` y `:versión`
+- **Tags**: `:latest` y `:versión` (ambos tags)
 - **Actions**: Usa docker/setup-buildx-action@v3, docker/login-action@v3, docker/build-push-action@v6
 
 ### Imágenes Construidas
@@ -403,22 +406,78 @@ your-registry.com/gha-api-gateway:latest
 your-registry.com/gha-api-gateway:v1.2.3
 ```
 
-## 🔍 Troubleshooting
+### Health Checks de los Contenedores
+
+Los servicios incluyen health checks nativos para monitoreo:
+
+#### API Gateway
+- **Endpoint**: `/healthz` - Health check nativo para Kubernetes
+- **Endpoint**: `/health` - Health check básico con información del servicio
+- **Endpoint**: `/api/v1/health` - Health check completo incluyendo orquestador
+
+#### Orquestador
+- **Endpoint**: `/healthz` - Health check nativo para Kubernetes  
+- **Endpoint**: `/health` - Health check con estado de runners activos
+
+#### Verificación Local
+```bash
+# Verificar health checks locales
+python build_and_push.py --health-check
+
+# Verificar health checks en Docker Compose
+docker compose ps
+curl http://localhost:8080/healthz
+curl http://localhost:8000/healthz
+```
+
+#### En Producción
+```bash
+# Kubernetes usa health checks automáticamente
+kubectl get pods
+kubectl describe pod <pod-name>
+```
+
+### Troubleshooting
+
+### Health Check Fallido
+
+1. **Verificar logs del contenedor**:
+   ```bash
+   docker compose logs api-gateway
+   docker compose logs orchestrator
+   ```
+
+2. **Verificar configuración del .env**:
+   ```bash
+   cat .env | grep -E "(ENABLE_AUTH|MAX_REQUESTS|RATE_WINDOW)"
+   ```
+
+3. **Probar health check manual**:
+   ```bash
+   curl -v http://localhost:8080/healthz
+   curl -v http://localhost:8000/healthz
+   ```
 
 ### Runner no se registra
 
-1. **Verificar token**:
+1. **Verificar health checks**:
+   ```bash
+   curl http://localhost:8080/healthz
+   curl http://localhost:8000/healthz
+   ```
+
+2. **Verificar token**:
    ```bash
    curl http://localhost:8080/api/v1/health
    echo $GITHUB_TOKEN  # ¿Tiene scopes correctos?
    ```
 
-2. **Revisar logs**:
+3. **Revisar logs**:
    ```bash
    docker compose logs orchestrator
    ```
 
-3. **Confirmar scope_name**:
+4. **Confirmar scope_name**:
    - Formato: `owner/repo` para repos
    - Formato: `organization` para orgs
 

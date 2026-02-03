@@ -212,6 +212,35 @@ async def health_check():
         "monitoring": lifecycle_manager.monitoring
     }
 
+@app.get("/healthz")
+async def kubernetes_health_check():
+    """
+    Health check nativo para Kubernetes.
+    Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
+    
+    Returns:
+        Estado del servicio para Kubernetes
+    """
+    try:
+        # Verificar estado del lifecycle manager
+        if not hasattr(lifecycle_manager, 'active_runners'):
+            raise HTTPException(status_code=503, detail="Lifecycle manager no inicializado")
+        
+        # Verificar que el número de runners activos sea manejable
+        active_count = len(lifecycle_manager.active_runners)
+        if active_count > 100:  # Límite razonable
+            raise HTTPException(status_code=503, detail=f"Demasiados runners activos: {active_count}")
+        
+        return {
+            "status": "healthy",
+            "service": "orchestrator",
+            "active_runners": active_count,
+            "monitoring": lifecycle_manager.monitoring
+        }
+    except Exception as e:
+        logger.error(f"Health check falló: {e}")
+        raise HTTPException(status_code=503, detail="Servicio no saludable")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

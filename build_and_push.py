@@ -84,6 +84,36 @@ class DockerBuilder:
         logger.info("Todas las imágenes procesadas exitosamente")
         return True
     
+    def verify_health_checks(self) -> bool:
+        """Verifica que los health checks funcionen correctamente."""
+        logger.info("Verificando health checks de las imágenes...")
+        
+        for image_name in self.images.keys():
+            full_image_name = f"{self.registry}/{image_name}:{self.image_version}"
+            
+            # Iniciar contenedor temporal para health check
+            container_name = f"health-check-{image_name}"
+            cmd = [
+                "docker", "run", "--rm", "--name", container_name,
+                full_image_name, "curl", "-f", 
+                f"http://localhost:{8000 if image_name == 'gha-orchestrator' else 8080}/healthz"
+            ]
+            
+            success, output = self.run_command(cmd)
+            
+            if success:
+                logger.info(f"Health check exitoso para {full_image_name}")
+            else:
+                logger.error(f"Health check fallido para {full_image_name}: {output}")
+                return False
+            
+            # Limpiar contenedor si existe
+            cleanup_cmd = ["docker", "rm", container_name]
+            self.run_command(cleanup_cmd)
+        
+        logger.info("Todos los health checks verificados exitosamente")
+        return True
+    
     def verify_images(self) -> bool:
         logger.info("Verificando imágenes locales...")
         
@@ -118,6 +148,7 @@ def main():
     parser.add_argument("--verify-only", action="store_true", help="Solo verificar imágenes existentes")
     parser.add_argument("--cleanup", action="store_true", help="Limpiar imágenes después del build")
     parser.add_argument("--dry-run", action="store_true", help="Simular ejecución sin hacer cambios")
+    parser.add_argument("--health-check", action="store_true", help="Verificar health checks de las imágenes")
     
     args = parser.parse_args()
     
@@ -162,6 +193,14 @@ def main():
                 sys.exit(0)
             else:
                 logger.error("Verificación fallida")
+                sys.exit(1)
+        
+        if args.health_check:
+            if builder.verify_health_checks():
+                logger.info("Health checks verificados exitosamente")
+                sys.exit(0)
+            else:
+                logger.error("Health checks fallidos")
                 sys.exit(1)
         
         if args.dry_run:
