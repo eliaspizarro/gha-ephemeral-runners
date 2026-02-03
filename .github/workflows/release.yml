@@ -1,0 +1,74 @@
+name: Create Release
+
+on:
+  push:
+    tags: 
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get previous tag
+      id: prev_tag
+      run: |
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        echo "prev_tag=$PREV_TAG" >> $GITHUB_ENV
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ -n "$PREV_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)")
+        fi
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## 🚀 Release ${{ github.ref_name }}
+          
+          ### 📋 Changes since ${{ env.prev_tag || 'initial release' }}
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### 🐳 Docker Images
+          
+          Images are available at:
+          - `gha-runner:${{ github.ref_name }}`
+          - `gha-orchestrator:${{ github.ref_name }}`
+          - `gha-api-gateway:${{ github.ref_name }}`
+          
+          ### 📦 Installation
+          
+          ```bash
+          # Clone and configure
+          git clone https://github.com/eliaspizarro/gha-ephemeral-runners.git
+          cd gha-ephemeral-runners
+          cp .env.example .env
+          
+          # Edit .env with your configuration
+          # - GITHUB_TOKEN: Your GitHub token
+          # - REGISTRY: Your registry URL
+          
+          # Deploy
+          docker compose up -d
+          ```
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
