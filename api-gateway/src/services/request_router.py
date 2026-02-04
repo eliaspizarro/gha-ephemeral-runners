@@ -1,19 +1,47 @@
+import asyncio
 import logging
 from typing import Any, Dict, List
 
 import httpx
 from fastapi import HTTPException
 
+from src.utils.helpers import format_log
+
 logger = logging.getLogger(__name__)
 
 
 class RequestRouter:
-    def __init__(self, orchestrator_url: str):
+    def __init__(self, orchestrator_url: str, timeout: float = 30.0, headers: dict = None):
         self.orchestrator_url = orchestrator_url.rstrip("/")
-        self.timeout = 30.0
+        self.timeout = timeout
+        self.max_retries = 3  # Hardcodeado
 
         # Configurar headers base
-        self.headers = {"Content-Type": "application/json", "User-Agent": "GHA-API-Gateway/1.0.0"}
+        self.headers = headers or {"Content-Type": "application/json", "User-Agent": "GHA-API-Gateway/1.0.0"}
+
+    async def forward_request_with_retry(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+        """
+        Reenvía una solicitud al orchestrator con reintentos y backoff exponencial.
+        """
+        last_exception = None
+        
+        for attempt in range(self.max_retries):
+            try:
+                return await self.forward_request(method, path, **kwargs)
+            except (httpx.RequestError, httpx.TimeoutException) as e:
+                last_exception = e
+                if attempt < self.max_retries - 1:
+                    backoff_time = 2 ** attempt  # 1, 2, 4, 8... segundos
+                    logger.warning(format_log('WARNING', 'Intento fallido', f"{attempt + 1}/{self.max_retries} - reintentando en {backoff_time}s"))
+                    await asyncio.sleep(backoff_time)
+                else:
+                    logger.error(format_log('ERROR', 'Todos los intentos fallaron', f'después de {self.max_retries} reintentos'))
+        
+        # Si llegamos aquí, todos los intentos fallaron
+        if isinstance(last_exception, httpx.TimeoutException):
+            raise HTTPException(status_code=504, detail="Timeout del orquestador después de múltiples intentos")
+        else:
+            raise HTTPException(status_code=503, detail="Orquestador no disponible después de múltiples intentos")
 
     async def forward_request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         """
@@ -36,7 +64,7 @@ class RequestRouter:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(method, url, headers=self.headers, **kwargs)
 
-                logger.info(f"Solicitud {method} {url} - Status: {response.status_code}")
+                logger.info(format_log('INFO', 'Solicitud al orquestador', f"{method} {url} - Status: {response.status_code}"))
 
                 if response.status_code >= 400:
                     error_detail = "Error del servidor"
@@ -136,30 +164,30 @@ class RequestRouter:
         return True
 
     async def create_runner(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Crea un runner a través del orchestrator."""
+        """Crea un runner a través del orchestrator con reintentos."""
         self.validate_runner_request(request_data)
-        return await self.forward_request("POST", "/runners/create", json=request_data)
+        return await self.forward_request_with_retry("POST", "/runners/create", json=request_data)
 
     async def get_runner_status(self, runner_id: str) -> Dict[str, Any]:
-        """Obtiene el estado de un runner."""
-        return await self.forward_request("GET", f"/runners/{runner_id}/status")
+        """Obtiene el estado de un runner con reintentos."""
+        return await self.forward_request_with_retry("GET", f"/runners/{runner_id}/status")
 
     async def destroy_runner(self, runner_id: str) -> Dict[str, Any]:
-        """Destruye un runner."""
-        return await self.forward_request("DELETE", f"/runners/{runner_id}")
+        """Destruye un runner con reintentos."""
+        return await self.forward_request_with_retry("DELETE", f"/runners/{runner_id}")
 
     async def list_runners(self) -> Dict[str, Any]:
-        """Lista todos los runners activos."""
-        return await self.forward_request("GET", "/runners")
+        """Lista todos los runners activos con reintentos."""
+        return await self.forward_request_with_retry("GET", "/runners")
 
     async def cleanup_runners(self) -> Dict[str, Any]:
-        """Limpia runners inactivos."""
-        return await self.forward_request("POST", "/runners/cleanup")
+        """Limpia runners inactivos con reintentos."""
+        return await self.forward_request_with_retry("POST", "/runners/cleanup")
 
     async def get_health(self) -> Dict[str, Any]:
-        """Verifica salud del servicio."""
-        return await self.forward_request("GET", "/health")
+        """Verifica salud del servicio con reintentos."""
+        return await self.forward_request_with_retry("GET", "/health")
 
     async def get_health_docker(self) -> Dict[str, Any]:
-        """Health check nativo para Docker."""
-        return await self.forward_request("GET", "/healthz")
+        """Health check nativo para Docker con reintentos."""
+        return await self.forward_request_with_retry("GET", "/healthz")

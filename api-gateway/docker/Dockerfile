@@ -37,4 +37,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ./healthcheck || exit 1
 
 # Comando de inicio
-CMD ["python", "gateway_service.py"]
+CMD ["python", "main.py"]
