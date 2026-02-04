@@ -1,6 +1,6 @@
 """
 Modelos de datos para la API del Orchestrator.
-Todos los modelos Pydantic centralizados en un solo archivo.
+Define las estructuras de datos para requests y respuestas.
 """
 
 from typing import Dict, List, Optional

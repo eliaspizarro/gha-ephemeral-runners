@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Metadatos
 LABEL maintainer="GHA Ephemeral Runners"
@@ -19,15 +19,16 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copiar requirements e instalar dependencias Python
-COPY ../requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Compilar health check de Go
-COPY healthcheck.go .
+COPY docker/healthcheck.go .
 RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
-COPY ../ .
+COPY src ./src
+COPY main.py .
 
 # Health check nativo en Go compilado
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

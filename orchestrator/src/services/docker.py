@@ -6,8 +6,7 @@ Centraliza operaciones comunes con contenedores.
 import logging
 from typing import Any, Dict, List, Optional
 
-from docker.errors import DockerException
-from docker.models.containers import Container
+import docker
 from src.utils.helpers import DockerError, ErrorHandler, format_container_id, setup_logger
 
 logger = setup_logger(__name__)
@@ -18,7 +17,7 @@ class DockerUtils:
 
     @staticmethod
     def safe_container_operation(
-        operation: str, container: Container, operation_func, *args, **kwargs
+        operation: str, container: Any, operation_func, *args, **kwargs
     ) -> Any:
         """
         Ejecuta operación segura en contenedor con manejo de errores.
@@ -50,7 +49,7 @@ class DockerUtils:
             raise DockerError(error_msg)
 
     @staticmethod
-    def get_container_info(container: Container) -> Dict[str, Any]:
+    def get_container_info(container: Any) -> Dict[str, Any]:
         """
         Obtiene información completa de un contenedor.
 
@@ -82,7 +81,7 @@ class DockerUtils:
             return {"id": format_container_id(container.id), "status": "error", "error": str(e)}
 
     @staticmethod
-    def is_container_running(container: Container) -> bool:
+    def is_container_running(container: Any) -> bool:
         """
         Verifica si un contenedor está corriendo.
 
@@ -99,7 +98,7 @@ class DockerUtils:
             return False
 
     @staticmethod
-    def get_container_labels(container: Container) -> Dict[str, str]:
+    def get_container_labels(container: Any) -> Dict[str, str]:
         """
         Obtiene labels de un contenedor de forma segura.
 
@@ -116,7 +115,7 @@ class DockerUtils:
             return {}
 
     @staticmethod
-    def get_container_environment(container: Container) -> Dict[str, str]:
+    def get_container_environment(container: Any) -> Dict[str, str]:
         """
         Obtiene variables de entorno de un contenedor.
 
@@ -217,7 +216,7 @@ class DockerUtils:
         return clean_name
 
     @staticmethod
-    def get_container_logs(container: Container, tail: int = 100) -> str:
+    def get_container_logs(container: Any, tail: int = 100) -> str:
         """
         Obtiene logs de un contenedor.
 
@@ -238,7 +237,7 @@ class DockerUtils:
 
     @staticmethod
     def wait_for_container(
-        container: Container, timeout: int = 30, check_interval: int = 1
+        container: Any, timeout: int = 30, check_interval: int = 1
     ) -> bool:
         """
         Espera a que un contenedor esté listo.

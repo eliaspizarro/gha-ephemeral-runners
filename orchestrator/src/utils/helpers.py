@@ -1,6 +1,6 @@
 """
 Utilitarios consolidados para el orchestrator.
-Combina utils.py, error_handler.py y placeholder_resolver.py.
+Contiene funciones de configuración, manejo de errores y resolución de placeholders.
 """
 
 import datetime
@@ -10,8 +10,6 @@ import re
 import socket
 import time
 from typing import Any, Dict, Optional
-
-from fastapi import HTTPException
 
 
 # ===== CONFIGURACIÓN Y LOGGING =====
@@ -23,13 +21,31 @@ def setup_logger(name: str) -> logging.Logger:
 
 def setup_logging_config():
     """Configura el logging básico para toda la aplicación."""
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s, %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    # Configurar formato detallado con nivel y nombre del logger
+    formatter = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
     
-    # Reducir verbosidad de uvicorn
+    # Configurar handler para consola
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    
+    # Configurar root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.handlers.clear()  # Limpiar handlers existentes
+    root_logger.addHandler(console_handler)
+    
+    # Reducir verbosidad de librerías externas
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("docker").setLevel(logging.WARNING)
+    
+    # Asegurar que nuestros loggers usen el mismo nivel
+    logging.getLogger("src").setLevel(logging.INFO)
+    logging.getLogger("__main__").setLevel(logging.INFO)
 
 
 def get_env_var(key: str, default: str = None, required: bool = False) -> str:
@@ -106,7 +122,7 @@ class ErrorHandler:
     @staticmethod
     def handle_error(
         error: Exception, operation: str, logger: logging.Logger, context: Optional[Dict[str, Any]] = None
-    ) -> HTTPException:
+    ) -> Any:
         """Maneja errores de forma centralizada."""
         error_type = type(error).__name__
         error_msg = str(error)
@@ -116,21 +132,27 @@ class ErrorHandler:
         if context:
             logger.error(f"Contexto: {context}")
         
-        # Mapeo de errores a HTTP status codes
+        return ErrorHandler.handle_http_exception(error)
+
+    @staticmethod
+    def handle_http_exception(error: Exception) -> Any:
+        """Convierte excepciones a HTTPException de FastAPI - solo en contenedor."""
+        from fastapi import HTTPException
+        
         if isinstance(error, ValidationError):
-            return HTTPException(status_code=400, detail=f"Error de validación: {error_msg}")
+            return HTTPException(status_code=400, detail=f"Error de validación: {error}")
         
         elif isinstance(error, DockerError):
-            return HTTPException(status_code=500, detail=f"Error de Docker: {error_msg}")
+            return HTTPException(status_code=500, detail=str(error))
         
         elif isinstance(error, GitHubError):
-            return HTTPException(status_code=502, detail=f"Error de GitHub API: {error_msg}")
+            return HTTPException(status_code=502, detail=f"Error de GitHub API: {error}")
         
         elif isinstance(error, ConfigurationError):
-            return HTTPException(status_code=500, detail=f"Error de configuración: {error_msg}")
+            return HTTPException(status_code=500, detail=f"Error de configuración: {error}")
         
         elif isinstance(error, (ValueError, KeyError)):
-            return HTTPException(status_code=400, detail=f"Error en datos: {error_msg}")
+            return HTTPException(status_code=400, detail=f"Error en datos: {error}")
         
         elif isinstance(error, ConnectionError):
             return HTTPException(status_code=503, detail="Error de conexión")
@@ -142,9 +164,10 @@ class ErrorHandler:
 # ===== RESOLUCIÓN DE PLACEHOLDERS =====
 
 class PlaceholderResolver:
-    """Resuelve placeholders dinamicos en configuraciones de runners."""
+    """Resuelve placeholders en plantillas de configuración."""
     
     def __init__(self):
+        self.logger = setup_logger(__name__)
         self.orchestrator_id = f"orchestrator-{os.getpid()}"
     
     def resolve_placeholders(self, template: str, context: Dict[str, Any]) -> str:
@@ -154,7 +177,7 @@ class PlaceholderResolver:
             required_context = ["scope_name", "runner_name", "registration_token"]
             for key in required_context:
                 if key not in context:
-                    logger.warning(f"Context missing required variable: {key}")
+                    self.logger.warning(f"Context missing required variable: {key}")
                     context[key] = f"missing_{key}"
             
             # Construir diccionario de sustituciones
@@ -168,7 +191,7 @@ class PlaceholderResolver:
             return result
         
         except Exception as e:
-            logger.error(f"Error resolviendo placeholders: {e}")
+            self.logger.error(f"Error resolviendo placeholders: {e}")
             return template
     
     def _build_substitutions(self, context: Dict[str, Any]) -> Dict[str, str]:
