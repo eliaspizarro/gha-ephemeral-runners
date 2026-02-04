@@ -9,12 +9,25 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_GATEWAY_DIR="$(dirname "$SCRIPT_DIR")"
 DOCKER_DIR="$API_GATEWAY_DIR/docker"
-IMAGE_NAME="${REGISTRY:-localhost}/gha-api-gateway"
-IMAGE_TAG="${IMAGE_VERSION:-latest}"
 
 echo "🏗️  Building GHA API Gateway Docker Image"
 echo "📁 API Gateway dir: $API_GATEWAY_DIR"
 echo "🐳 Docker dir: $DOCKER_DIR"
+echo ""
+
+# Mensaje de uso simple
+echo "📖 Usage: $0 [registry] [version]"
+echo "💡 Examples: $0 | $0 myreg.com | $0 localhost 1.2.0"
+echo ""
+
+# Argumentos opcionales con defaults (usando variables estándar)
+REGISTRY="${1:-${REGISTRY:-localhost}}"
+IMAGE_VERSION="${2:-${IMAGE_VERSION:-latest}}"
+
+# Aplicar variables a las variables del script
+IMAGE_NAME="${REGISTRY}/gha-api-gateway"
+IMAGE_TAG="$IMAGE_VERSION"
+
 echo "📦 Image: $IMAGE_NAME:$IMAGE_TAG"
 echo ""
 
