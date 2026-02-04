@@ -40,10 +40,7 @@ class LifecycleManager:
                               params=params, timeout=30.0)
         return response.json() if response.status_code == 200 else {}
 
-    def _get_workflow_data(self, repo: str, data_type: str) -> Dict:
-        """Obtiene datos de workflows (runs, jobs, etc.)."""
-        return self._github_api_call(f"repos/{repo}/actions/{data_type}")
-
+    
     @handle_lifecycle_errors
     def create_runner(
         self,

@@ -243,16 +243,5 @@ class EnvironmentManager:
             "orchestrator_id": self.placeholder_resolver.orchestrator_id,
         }
 
-    def reload_configuration(self):
-        """Recarga la configuración desde variables de entorno."""
-        self._cached_config = None
-        logger.info("Configuración recargada")
-
-    def get_placeholder_info(self) -> Dict[str, str]:
-        """
-        Retorna información sobre placeholders disponibles.
-
-        Returns:
-            Diccionario placeholder -> descripción
-        """
-        return self.placeholder_resolver.get_available_placeholders()
+    
+    
