@@ -213,6 +213,16 @@ class OrchestratorService:
             logger.error(f"Error en limpieza: {e}")
             raise
     
+    async def debug_runner_environment(self, runner_name: str) -> Dict:
+        """Debug de variables de entorno de un runner."""
+        env_vars = self.lifecycle_manager.debug_runner_environment(runner_name)
+        return create_response(True, "Environment variables obtenidas", env_vars)
+    
+    async def get_runner_detailed_info(self, runner_name: str) -> Dict:
+        """Obtiene información detallada de un runner."""
+        info = self.lifecycle_manager.get_runner_detailed_info(runner_name)
+        return create_response(True, "Información detallada obtenida", info)
+
     async def get_runner_logs(self, runner_name: str) -> Dict:
         """Obtiene logs de un runner específico."""
         try:

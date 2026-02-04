@@ -53,7 +53,9 @@ class ContainerManager:
         if labels:
             environment["RUNNER_LABELS"] = ",".join(labels)
 
-        container_name = DockerUtils.format_container_name("gha-runner", runner_name)
+        # Validar y formatear nombre de contenedor
+        validated_name = DockerUtils.validate_container_name(runner_name)
+        container_name = DockerUtils.format_container_name("gha-runner", validated_name)
         container_labels = DockerUtils.create_container_labels(
             runner_name=runner_name, scope=scope, scope_name=scope_name
         )
@@ -68,9 +70,14 @@ class ContainerManager:
             labels=container_labels,
         )
 
-        logger.info(f"✅ Contenedor creado: {format_container_id(container.id)}")
-        time.sleep(3)
-        self.log_container_output(container, runner_name)
+        logger.info(f"✅ Contenedor creado: {DockerUtils.format_container_id(container.id)}")
+        
+        # Esperar a que el contenedor esté completamente iniciado
+        if DockerUtils.wait_for_container(container, timeout=30):
+            self.log_container_output(container, runner_name)
+        else:
+            logger.error(f"❌ Runner {runner_name} falló al iniciar correctamente")
+        
         return container
 
     def get_runner_containers(self) -> List[Any]:
@@ -95,8 +102,15 @@ class ContainerManager:
             return False
 
     def get_container_logs(self, container: Any, tail: int = 50) -> str:
-        """Obtiene logs de un contenedor de runner."""
-        return DockerUtils.get_container_logs(container, tail)
+        """Obtiene logs de un contenedor usando safe_container_operation."""
+        try:
+            return DockerUtils.safe_container_operation(
+                "obtener logs", container, container.logs, tail=tail, timestamps=True
+            )
+        except DockerError:
+            return "Error obteniendo logs"
+        except Exception as e:
+            return f"Error inesperado: {str(e)}"
 
     def log_container_output(self, container: Any, runner_name: str) -> None:
         """Muestra logs del contenedor con detección simple de timestamps."""
@@ -144,26 +158,12 @@ class ContainerManager:
         return line
 
     def get_container_info(self, container: Any) -> Dict[str, Any]:
-        """Obtiene información completa de un contenedor."""
-        try:
-            container.reload()
-            return {
-                "id": container.id[:12],
-                "status": container.status,
-                "image": container.image.tags[0] if container.image.tags else "unknown",
-                "created": container.attrs["Created"],
-                "labels": container.labels,
-            }
-        except Exception as e:
-            return {"error": str(e)}
+        """Obtiene información completa de un contenedor usando DockerUtils."""
+        return DockerUtils.get_container_info(container)
 
     def is_container_running(self, container: Any) -> bool:
-        """Verifica si un contenedor está en ejecución."""
-        try:
-            container.reload()
-            return container.status == "running"
-        except:
-            return False
+        """Verifica si un contenedor está en ejecución usando DockerUtils."""
+        return DockerUtils.is_container_running(container)
 
     def get_container_by_name(self, name: str) -> Any:
         """Obtiene un contenedor por su nombre."""

@@ -66,9 +66,10 @@ class LifecycleManager:
             labels=labels,
         )
 
-        runner_id = container.labels.get("runner-name", container.id[:12])
+        runner_id = DockerUtils.get_container_labels(container).get("runner-name", container.id[:12])
         self.active_runners[runner_id] = container
-        logger.info(f"✅ Runner creado: {runner_id} (container: {container.id[:12]})")
+        container_id = DockerUtils.format_container_id(container.id)
+        logger.info(f"✅ Runner creado: {runner_id} (container: {container_id})")
         return runner_id
 
     @handle_lifecycle_errors
@@ -79,14 +80,14 @@ class LifecycleManager:
             return {"status": "error", "runner_id": runner_id, "error": "Runner no encontrado"}
         
         try:
-            container.reload()
+            info = DockerUtils.get_container_info(container)
             return {
-                "status": "running" if container.status == "running" else "stopped",
+                "status": "running" if info["status"] == "running" else "stopped",
                 "runner_id": runner_id,
-                "container_id": container.id[:12],
-                "image": container.image.tags[0] if container.image.tags else "unknown",
-                "created": container.attrs["Created"],
-                "labels": container.labels,
+                "container_id": info["id"],
+                "image": info["image"],
+                "created": info["created"],
+                "labels": info["labels"],
             }
         except Exception as e:
             return {"status": "error", "runner_id": runner_id, "error": str(e)}
@@ -106,9 +107,11 @@ class LifecycleManager:
 
         try:
             container.reload()
-            logger.info(f"🐳 Estado: {container.status} (ID: {container.id[:12]})")
+            status = container.status
+            container_id = DockerUtils.format_container_id(container.id)
+            logger.info(f"🐳 Estado: {status} (ID: {container_id})")
         except Exception as e:
-            logger.warning(f"⚠️  No se pudo obtener información final: {e}")
+            logger.warning(f"⚠️ No se pudo obtener información final: {e}")
 
         logger.info(f"🛑 Destruyendo runner: {runner_id}")
         success = self.container_manager.stop_container(container)
@@ -125,7 +128,7 @@ class LifecycleManager:
     def list_active_runners(self) -> List[Dict]:
         """Lista todos los runners activos."""
         containers = self.container_manager.get_runner_containers()
-        return [self.get_runner_status(container.labels.get("runner-name", container.id[:12])) 
+        return [self.get_runner_status(DockerUtils.get_container_labels(container).get("runner-name", container.id[:12])) 
                 for container in containers]
 
     @handle_lifecycle_errors
@@ -140,12 +143,13 @@ class LifecycleManager:
             try:
                 container.reload()
                 
-                if container.status not in ["running", "paused", "restarting"]:
+                if not DockerUtils.is_container_running(container):
                     logger.info(f"💀 Runner {runner_id} está muerto, se eliminará")
                     runners_to_remove.append(runner_id)
                     continue
                 
-                repo = container.labels.get("repo")
+                labels = DockerUtils.get_container_labels(container)
+                repo = labels.get("repo")
                 if repo and self.get_active_workflows_for_repo(repo) == 0:
                     runners_to_remove.append(runner_id)
                         
@@ -269,15 +273,36 @@ class LifecycleManager:
     def _runner_belongs_to_repo(self, container: Any, repo: str) -> bool:
         """Verifica si un runner pertenece a un repositorio."""
         try:
-            container.reload()
-            if container.status != "running":
+            if not DockerUtils.is_container_running(container):
                 return False
             
-            labels = container.labels
+            labels = DockerUtils.get_container_labels(container)
             return labels.get("repo") == repo or labels.get("scope_name") == repo
         except:
-            self.active_runners.pop(container.labels.get("runner-name", container.id[:12]), None)
+            self.active_runners.pop(DockerUtils.get_container_labels(container).get("runner-name", container.id[:12]), None)
             return False
+
+    def get_runner_detailed_info(self, runner_name: str) -> Dict:
+        """Obtiene información detallada de un runner usando DockerUtils."""
+        try:
+            container = self.get_runner_container(runner_name)
+            if container:
+                return DockerUtils.get_container_info(container)
+            return {}
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo información del runner {runner_name}: {e}")
+            return {}
+
+    def debug_runner_environment(self, runner_name: str) -> Dict:
+        """Obtiene variables de entorno de un runner para debugging."""
+        try:
+            container = self.get_runner_container(runner_name)
+            if container:
+                return DockerUtils.get_container_environment(container)
+            return {}
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo entorno del runner {runner_name}: {e}")
+            return {}
 
     def get_user_repositories(self) -> List[str]:
         """Obtiene todos los repositorios accesibles del usuario."""

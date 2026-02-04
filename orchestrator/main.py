@@ -99,6 +99,24 @@ async def cleanup_runners():
         raise ErrorHandler.handle_error(e, "limpieza de runners", logger)
 
 
+@app.get("/runners/{runner_name}/debug")
+async def debug_runner_environment(runner_name: str):
+    """Debug de variables de entorno de un runner."""
+    try:
+        env_vars = orchestrator_service.debug_runner_environment(runner_name)
+        return create_response(True, "Environment variables obtenidas", env_vars)
+    except Exception as e:
+        raise ErrorHandler.handle_error(e, "debugging runner", logger)
+
+@app.get("/runners/{runner_name}/info")
+async def get_runner_detailed_info(runner_name: str):
+    """Obtiene información detallada de un runner."""
+    try:
+        info = orchestrator_service.get_runner_detailed_info(runner_name)
+        return create_response(True, "Información detallada obtenida", info)
+    except Exception as e:
+        raise ErrorHandler.handle_error(e, "obteniendo información del runner", logger)
+
 @app.get("/runners/{runner_name}/logs")
 async def get_runner_logs(runner_name: str):
     """Obtiene logs de un runner específico."""
