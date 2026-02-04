@@ -1,0 +1,4 @@
+# Dependencias de producción para orchestratorv2
+# Rol: Definir paquetes necesarios para ejecución en producción
+# Incluye FastAPI, Docker client, GitHub API y validación
+# Usado por: Docker builds, deployments, instalación manual
