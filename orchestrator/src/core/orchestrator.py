@@ -21,7 +21,8 @@ from src.utils.helpers import (
     PlaceholderResolver,
     create_response, 
     setup_logger,
-    get_env_var
+    get_env_var,
+    format_log
 )
 
 # Configuración de logging centralizada
@@ -41,60 +42,59 @@ class OrchestratorService:
     def _initialize_environment(self):
         """Inicializa variables de entorno."""
         try:
-            logger.info("=== INICIALIZANDO ORCHESTRATOR SERVICE ===")
-            logger.info("Configurando variables de entorno...")
+            logger.info(format_log('CONFIG', 'Configurando variables de entorno'))
+            
+            # Contar variables configuradas
+            config_vars = []
             
             self.github_runner_token = get_env_var("GITHUB_RUNNER_TOKEN", required=True)
-            logger.info(f"GITHUB_RUNNER_TOKEN: {'***CONFIGURADO***' if self.github_runner_token else 'NO CONFIGURADO'}")
+            config_vars.append("GITHUB_RUNNER_TOKEN: ***CONFIGURADO***")
             
             self.runner_image = get_env_var("RUNNER_IMAGE", required=True)
-            logger.info(f"RUNNER_IMAGE: {self.runner_image}")
+            config_vars.append(f"RUNNER_IMAGE: {self.runner_image}")
             
             self.auto_create_runners = os.getenv("AUTO_CREATE_RUNNERS", "false").lower() == "true"
-            logger.info(f"AUTO_CREATE_RUNNERS: {self.auto_create_runners}")
+            config_vars.append(f"AUTO_CREATE_RUNNERS: {self.auto_create_runners}")
             
             self.runner_check_interval = int(os.getenv("RUNNER_CHECK_INTERVAL", "300"))
-            logger.info(f"RUNNER_CHECK_INTERVAL: {self.runner_check_interval} segundos")
+            config_vars.append(f"RUNNER_CHECK_INTERVAL: {self.runner_check_interval}s")
             
-            # Mostrar todas las variables de entorno relevantes
-            logger.info("Variables de entorno configuradas:")
+            # Agregar otras variables relevantes
             for key, value in os.environ.items():
-                if key.startswith(('GITHUB_', 'RUNNER_', 'AUTO_')):
+                if key.startswith(('GITHUB_', 'RUNNER_', 'AUTO_')) and key not in ['GITHUB_RUNNER_TOKEN', 'RUNNER_IMAGE', 'AUTO_CREATE_RUNNERS', 'RUNNER_CHECK_INTERVAL']:
                     if 'TOKEN' in key:
-                        logger.info(f"  {key}: ***CONFIGURADO***")
+                        config_vars.append(f"{key}: ***CONFIGURADO***")
                     else:
-                        logger.info(f"  {key}: {value}")
+                        config_vars.append(f"{key}: {value}")
             
-            logger.info("✅ Variables de entorno inicializadas correctamente")
+            logger.info(format_log('CONFIG', f'{len(config_vars)} variables configuradas'))
+            logger.info(format_log('SUCCESS', 'Variables de entorno inicializadas'))
             
         except Exception as e:
-            logger.error(f"❌ Error inicializando variables de entorno: {e}")
+            logger.error(format_log('ERROR', 'Error inicializando variables', str(e)))
             raise
     
     def _initialize_components(self):
         """Inicializa componentes principales."""
         try:
-            logger.info("Inicializando componentes del orchestrator...")
+            logger.info(format_log('CONFIG', 'Inicializando componentes'))
             
             # Inicializar Lifecycle Manager
-            logger.info("Creando Lifecycle Manager...")
             self.lifecycle_manager = LifecycleManager(self.github_runner_token, self.runner_image)
-            logger.info("✅ Lifecycle Manager inicializado")
+            logger.info(format_log('SUCCESS', 'Lifecycle Manager inicializado'))
             
             # Inicializar Config Validator
-            logger.info("Creando Config Validator...")
             self.config_validator = ConfigValidator()
-            logger.info("✅ Config Validator inicializado")
+            logger.info(format_log('SUCCESS', 'Config Validator inicializado'))
             
             # Inicializar Placeholder Resolver
-            logger.info("Creando Placeholder Resolver...")
             self.placeholder_resolver = PlaceholderResolver()
-            logger.info("✅ Placeholder Resolver inicializado")
+            logger.info(format_log('SUCCESS', 'Placeholder Resolver inicializado'))
             
-            logger.info("✅ Todos los componentes inicializados correctamente")
+            logger.info(format_log('SUCCESS', 'Todos los componentes inicializados'))
             
         except Exception as e:
-            logger.error(f"❌ Error inicializando componentes: {e}")
+            logger.error(format_log('ERROR', 'Error inicializando componentes', str(e)))
             raise
     
     def _validate_configuration(self):
@@ -104,38 +104,31 @@ class OrchestratorService:
             
             if not validation_result["valid"]:
                 for error in validation_result["errors"]:
-                    logger.error(f"Error de configuración: {error}")
+                    logger.error(format_log('ERROR', 'Error de configuración', error))
                 raise ConfigurationError("Configuración inválida")
             
             for warning in validation_result["warnings"]:
-                logger.warning(f"Advertencia: {warning}")
+                logger.warning(format_log('WARNING', 'Advertencia', warning))
             
-            logger.info("Configuración validada exitosamente")
+            logger.info(format_log('SUCCESS', 'Configuración validada'))
             
         except Exception as e:
-            logger.error(f"Error validando configuración: {e}")
+            logger.error(format_log('ERROR', 'Error validando configuración', str(e)))
             raise
     
     def _setup_monitoring(self):
         """Configura el monitoreo automático si está activado."""
         try:
-            logger.info("Configurando sistema de monitoreo...")
+            logger.info(format_log('CONFIG', 'Configurando sistema de monitoreo'))
             
             if self.auto_create_runners:
-                logger.info(f"🚀 AUTOMATIZACIÓN ACTIVADA")
-                logger.info(f"⏰ Verificando runners cada {self.runner_check_interval} segundos")
-                logger.info("🔍 Iniciando monitoreo automático de workflows...")
+                logger.info(format_log('MONITOR', 'Sistema activado', f'intervalo: {self.runner_check_interval}s'))
                 self.lifecycle_manager.start_monitoring(self.runner_check_interval)
-                logger.info("✅ Monitoreo automático iniciado")
             else:
-                logger.info("⏸️  AUTOMATIZACIÓN DESACTIVADA")
-                logger.info("ℹ️  Los runners se crearán solo por solicitud manual via API")
-                
-            logger.info("✅ Sistema de monitoreo configurado correctamente")
-            logger.info("=== ORCHESTRATOR SERVICE INICIALIZADO COMPLETAMENTE ===")
+                logger.info(format_log('INFO', 'Automatización desactivada - modo manual'))
                 
         except Exception as e:
-            logger.error(f"❌ Error configurando monitoreo: {e}")
+            logger.error(format_log('ERROR', 'Error configurando monitoreo', str(e)))
             raise
     
     # ===== MÉTODOS DE NEGOCIO PARA RUNNERS =====

@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException
 
 from src.api.models import *
 from src.core.orchestrator import OrchestratorService
-from src.utils.helpers import ErrorHandler, setup_logging_config
+from src.utils.helpers import ErrorHandler, setup_logging_config, format_log
 
 # Configurar logging ANTES de inicializar el servicio
 setup_logging_config()
@@ -20,23 +20,22 @@ setup_logging_config()
 logger = logging.getLogger(__name__)
 
 # Inicialización del servicio de negocio
-logger.info("🚀 INICIANDO ORCHESTRATOR SERVICE...")
+logger.info(format_log('START', 'Orchestrator Service'))
 orchestrator_service = OrchestratorService()
-logger.info("✅ ORCHESTRATOR SERVICE INICIALIZADO")
+logger.info(format_log('SUCCESS', 'Servicio inicializado correctamente'))
 
 
 # Lifecycle events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Maneja el ciclo de vida de la aplicación FastAPI."""
-    logger.info("Iniciando servicio de orquestador")
-    logger.info("Servicio iniciado exitosamente")
+    logger.info(format_log('START', 'Servicio FastAPI'))
     
     yield
     
-    logger.info("Deteniendo servicio de orquestador")
+    logger.info(format_log('INFO', 'Deteniendo servicio de orquestador'))
     orchestrator_service.stop_monitoring()
-    logger.info("Servicio detenido")
+    logger.info(format_log('SUCCESS', 'Servicio detenido'))
 
 
 # Inicialización del servicio FastAPI

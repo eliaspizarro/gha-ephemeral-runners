@@ -14,6 +14,24 @@ from typing import Any, Dict, Optional
 
 # ===== CONFIGURACIÓN Y LOGGING =====
 
+# Constantes de formato para logging estandarizado
+LOG_CATEGORIES = {
+    'START': '🚀 INICIO',
+    'CONFIG': '⚙️ CONFIG', 
+    'MONITOR': '🔄 MONITOREO',
+    'SUCCESS': '✅ ÉXITO',
+    'ERROR': '❌ ERROR',
+    'WARNING': '⚠️ ADVERTENCIA',
+    'INFO': '📋 INFO'
+}
+
+def format_log(category: str, action: str, detail: str = "") -> str:
+    """Formatea mensaje de log consistente."""
+    prefix = LOG_CATEGORIES.get(category, '📋 INFO')
+    if detail:
+        return f"{prefix} {action}: {detail}"
+    return f"{prefix} {action}"
+
 def setup_logger(name: str) -> logging.Logger:
     """Configura y retorna un logger estandarizado."""
     return logging.getLogger(name)
@@ -21,11 +39,30 @@ def setup_logger(name: str) -> logging.Logger:
 
 def setup_logging_config():
     """Configura el logging básico para toda la aplicación."""
-    # Configurar formato detallado con nivel y nombre del logger
-    formatter = logging.Formatter(
-        fmt="%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    import os
+    
+    # Obtener nivel de logging desde variable de entorno
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_verbose = os.getenv("LOG_VERBOSE", "false").lower() == "true"
+    
+    # Configurar niveles válidos
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if log_level not in valid_levels:
+        log_level = "INFO"
+    
+    # Configurar formato según nivel
+    if log_verbose or log_level == "DEBUG":
+        # Formato detallado para desarrollo/debug
+        formatter = logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+    else:
+        # Formato simplificado para producción
+        formatter = logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
     
     # Configurar handler para consola
     console_handler = logging.StreamHandler()
@@ -33,19 +70,25 @@ def setup_logging_config():
     
     # Configurar root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(getattr(logging, log_level))
     root_logger.handlers.clear()  # Limpiar handlers existentes
     root_logger.addHandler(console_handler)
     
     # Reducir verbosidad de librerías externas
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("docker").setLevel(logging.WARNING)
+    if not log_verbose:
+        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+        logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("docker").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
     
     # Asegurar que nuestros loggers usen el mismo nivel
-    logging.getLogger("src").setLevel(logging.INFO)
-    logging.getLogger("__main__").setLevel(logging.INFO)
+    logging.getLogger("src").setLevel(getattr(logging, log_level))
+    logging.getLogger("__main__").setLevel(getattr(logging, log_level))
+    
+    # Mostrar configuración actual
+    if log_verbose:
+        print(f"🔧 Logging configurado: nivel={log_level}, verbose={log_verbose}")
 
 
 def get_env_var(key: str, default: str = None, required: bool = False) -> str:

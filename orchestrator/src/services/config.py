@@ -3,6 +3,8 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
+from src.utils.helpers import format_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,9 +126,8 @@ class ConfigValidator:
 
     def _validate_runner_image(self, image: str) -> bool:
         """
-        Valida si la imagen del runner es compatible.
-        Lógica genérica sin hardcodeo de imágenes específicas.
-
+        Valida si una imagen Docker es soportada por el sistema.
+        
         Args:
             image: Nombre de la imagen
 
@@ -134,13 +135,13 @@ class ConfigValidator:
             True si es soportada (siempre true para sistema genérico)
         """
         # Sistema genérico: cualquier imagen es soportada vía runnerenv_
-        logger.info(f"Imagen detectada: {image} (sistema genérico, cualquier imagen es soportada)")
+        logger.info(format_log('CONFIG', f'Imagen detectada: {image}', 'sistema genérico'))
         return True
 
     def _validate_runner_env_vars(self) -> Dict[str, Any]:
         """
         Valida variables de entorno de runners (runnerenv_*).
-
+        
         Returns:
             Diccionario con resultado de validación
         """

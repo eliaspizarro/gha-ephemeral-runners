@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -10,6 +11,15 @@ from src.services.environment import EnvironmentManager
 from src.utils.helpers import ErrorHandler, format_container_id, validate_runner_name
 
 logger = logging.getLogger(__name__)
+
+# Patrones comunes de timestamp
+TIMESTAMP_PATTERNS = [
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s*',      # ISO 8601 nano
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s*',           # ISO 8601 simple
+    r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s*',             # YYYY-MM-DD HH:MM:SS
+    r'\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s*',         # [timestamp]
+    r'\[\d+\]\s*',                                          # [unix]
+]
 
 
 class ContainerManager:
@@ -27,226 +37,140 @@ class ContainerManager:
         runner_group: Optional[str] = None,
         labels: Optional[List[str]] = None,
     ) -> Any:
-        """
-        Crea un contenedor Docker para un runner efímero.
+        """Crea un contenedor Docker para un runner efímero."""
+        if not runner_name:
+            runner_name = f"ephemeral-runner-{uuid.uuid4().hex[:8]}"
+        runner_name = validate_runner_name(runner_name)
 
-        Args:
-            registration_token: Token de registro temporal
-            scope: 'repo' u 'org'
-            scope_name: Nombre del repositorio u organización
-            runner_name: Nombre único del runner (opcional)
-            runner_group: Grupo del runner (opcional)
-            labels: Labels para el runner (opcional)
+        environment = self.environment_manager.process_environment_variables(
+            scope_name=scope_name,
+            runner_name=runner_name,
+            registration_token=registration_token,
+        )
+        
+        if runner_group:
+            environment["RUNNER_GROUP"] = runner_group
+        if labels:
+            environment["RUNNER_LABELS"] = ",".join(labels)
 
-        Returns:
-            Contenedor Docker creado
+        container_name = DockerUtils.format_container_name("gha-runner", runner_name)
+        container_labels = DockerUtils.create_container_labels(
+            runner_name=runner_name, scope=scope, scope_name=scope_name
+        )
 
-        Raises:
-            DockerError: Si falla la creación del contenedor
-        """
-        try:
-            logger.info("🐳 CONFIGURANDO CONTENEDOR DOCKER")
-            
-            # Validar y generar nombre del runner
-            if not runner_name:
-                runner_name = f"ephemeral-runner-{uuid.uuid4().hex[:8]}"
+        logger.info(f"🐳 Creando contenedor {container_name} con imagen {self.runner_image}")
+        
+        container = self.client.containers.run(
+            self.runner_image,
+            name=container_name,
+            environment=environment,
+            detach=True,
+            labels=container_labels,
+        )
 
-            runner_name = validate_runner_name(runner_name)
-
-            # Preparar variables de entorno
-            environment = self.environment_manager.process_environment_variables(
-                scope_name=scope_name,
-                runner_name=runner_name,
-                registration_token=registration_token,
-            )
-            
-            logger.info("📋 Variables de entorno configuradas:")
-            for key, value in environment.items():
-                if 'TOKEN' in key:
-                    logger.info(f"  {key}: ***CONFIGURADO***")
-                else:
-                    logger.info(f"  {key}: {value}")
-
-            if runner_group:
-                environment["RUNNER_GROUP"] = runner_group
-
-            if labels:
-                environment["RUNNER_LABELS"] = ",".join(labels)
-
-            # Crear nombre de contenedor
-            container_name = DockerUtils.format_container_name("gha-runner", runner_name)
-            logger.info(f"🏷️  Nombre del contenedor: {container_name}")
-
-            # Crear labels estándar
-            container_labels = DockerUtils.create_container_labels(
-                runner_name=runner_name, scope=scope, scope_name=scope_name
-            )
-            logger.info(f"🏷️  Labels del contenedor: {container_labels}")
-
-            logger.info(f"🚀 Creando contenedor con imagen: {self.runner_image}")
-            
-            # Crear contenedor
-            container = self.client.containers.run(
-                self.runner_image,
-                name=container_name,
-                environment=environment,
-                detach=True,
-                labels=container_labels,
-            )
-
-            logger.info(f"✅ Contenedor creado: {format_container_id(container.id)}")
-
-            # Esperar y mostrar logs iniciales
-            logger.info("⏳ Esperando inicialización del contenedor...")
-            time.sleep(3)
-            
-            logger.info("📋 Logs iniciales del contenedor:")
-            self.log_container_output(container, runner_name)
-
-            logger.info(f"🎉 CONTENEDOR RUNNER CREADO EXITOSAMENTE")
-            return container
-
-        except Exception as e:
-            logger.error(f"❌ Error creando contenedor runner: {e}")
-            raise ErrorHandler.handle_error(e, "creando contenedor runner", logger)
+        logger.info(f"✅ Contenedor creado: {format_container_id(container.id)}")
+        time.sleep(3)
+        self.log_container_output(container, runner_name)
+        return container
 
     def get_runner_containers(self) -> List[Any]:
-        """
-        Obtiene todos los contenedores de runners efímeros activos.
-
-        Returns:
-            Lista de contenedores activos
-        """
-        try:
-            containers = self.client.containers.list(filters={"label": "gha-ephemeral=true"})
-            return containers
-        except Exception as e:
-            raise ErrorHandler.handle_error(e, "listando contenedores runners", logger)
-
-    def get_container_by_name(self, runner_name: str) -> Optional[Any]:
-        """
-        Busca un contenedor por el nombre del runner.
-
-        Args:
-            runner_name: Nombre del runner
-
-        Returns:
-            Contenedor encontrado o None
-        """
+        """Obtiene todos los contenedores de runners efímeros activos."""
         try:
             containers = self.client.containers.list(
-                all=True, filters={"label": f"runner-name={runner_name}"}
+                all=False, filters={"label": "gha-ephemeral=true"}
             )
-            return containers[0] if containers else None
+            return containers
         except Exception as e:
-            raise ErrorHandler.handle_error(e, "buscando contenedor por nombre", logger)
+            logger.error(f"Error obteniendo contenedores: {e}")
+            return []
 
     def stop_container(self, container: Any, timeout: int = 30) -> bool:
-        """
-        Detiene un contenedor de runner.
-
-        Args:
-            container: Contenedor a detener
-            timeout: Timeout para detener
-
-        Returns:
-            True si se detuvo exitosamente
-        """
-        runner_name = container.labels.get("runner-name", "unknown")
-
+        """Detiene y elimina un contenedor."""
         try:
-            logger.info(f"{runner_name} - INFO - Deteniendo contenedor")
-
-            # Verificar que el contenedor existe antes de detenerlo
-            try:
-                container.reload()
-                if container.status not in ["running", "paused", "restarting"]:
-                    logger.info(
-                        f"{runner_name} - INFO - Contenedor ya no está corriendo: {container.status}"
-                    )
-                    return True
-            except Exception:
-                logger.warning(f"{runner_name} - WARNING - Contenedor ya no existe")
-                return True
-
-            # Mostrar logs finales antes de detener
-            self.log_container_output(container, runner_name)
-
             container.stop(timeout=timeout)
-            logger.info(f"{runner_name} - INFO - Contenedor detenido exitosamente")
+            container.remove(force=True)
             return True
         except Exception as e:
-            raise ErrorHandler.handle_error(e, "deteniendo contenedor", logger)
+            logger.error(f"Error deteniendo contenedor: {e}")
+            return False
 
     def get_container_logs(self, container: Any, tail: int = 50) -> str:
-        """
-        Obtiene logs de un contenedor de runner.
-
-        Args:
-            container: Contenedor Docker
-            tail: Número de líneas a obtener
-
-        Returns:
-            Logs del contenedor
-        """
+        """Obtiene logs de un contenedor de runner."""
         return DockerUtils.get_container_logs(container, tail)
 
     def log_container_output(self, container: Any, runner_name: str) -> None:
-        """
-        Muestra logs del contenedor en formato estándar.
-
-        Args:
-            container: Contenedor Docker
-            runner_name: Nombre del runner
-        """
+        """Muestra logs del contenedor con detección simple de timestamps."""
         try:
-            logger.info(f"📋 OBTENIENDO LOGS DEL CONTENEDOR: {runner_name}")
+            print(f"📋 Salida del Runner: {runner_name}")
+            print("")
             
-            # Obtener información del contenedor primero
-            try:
-                container.reload()
-                logger.info(f"🐳 Estado del contenedor: {container.status}")
-                logger.info(f"🆔 ID del contenedor: {format_container_id(container.id)}")
-                logger.info(f"🏷️  Imagen: {container.image.tags[0] if container.image.tags else 'unknown'}")
-            except Exception as e:
-                logger.warning(f"⚠️  No se pudo obtener información del contenedor: {e}")
-            
-            # Obtener logs
-            logs = self.get_container_logs(container, tail=50)  # Aumentado de 20 a 50
-            
+            logs = self.get_container_logs(container, tail=50)
             if logs and logs != "Error obteniendo logs":
-                logger.info(f"📄 LOGS DEL CONTENEDOR ({len(logs.split())} líneas):")
-                logger.info("=" * 60)
+                # Detectar patrón dominante en primeras 10 líneas
+                dominant_pattern = self._detect_timestamp_pattern(logs)
+                
                 for line in logs.split("\n"):
                     if line.strip():
-                        logger.info(f"  {runner_name} | {line.strip()}")
-                logger.info("=" * 60)
-            else:
-                logger.warning(f"⚠️  No se pudieron obtener logs del contenedor {runner_name}")
-                
+                        clean_line = self._clean_timestamp(line.strip(), dominant_pattern)
+                        print(f"  {runner_name} | {clean_line}")
+            
+            print("")
+            
         except Exception as e:
-            logger.error(f"❌ Error obteniendo logs del contenedor {runner_name}: {e}")
+            print(f"❌ Error obteniendo logs del contenedor {runner_name}: {e}")
+
+    def _detect_timestamp_pattern(self, logs: str) -> Optional[str]:
+        """Detecta el patrón de timestamp más común."""
+        pattern_counts = {}
+        
+        # Analizar primeras 10 líneas
+        for line in logs.split('\n')[:10]:
+            for i, pattern in enumerate(TIMESTAMP_PATTERNS):
+                if re.match(pattern, line.strip()):
+                    pattern_counts[i] = pattern_counts.get(i, 0) + 1
+        
+        # Retornar patrón más frecuente (si aparece 3+ veces)
+        if pattern_counts:
+            dominant = max(pattern_counts.items(), key=lambda x: x[1])
+            if dominant[1] >= 3:  # Umbral simple
+                return TIMESTAMP_PATTERNS[dominant[0]]
+        
+        return None
+
+    def _clean_timestamp(self, line: str, pattern: Optional[str]) -> str:
+        """Elimina timestamp si el patrón coincide."""
+        if pattern and re.match(pattern, line):
+            return re.sub(pattern, '', line)
+        return line
 
     def get_container_info(self, container: Any) -> Dict[str, Any]:
-        """
-        Obtiene información completa de un contenedor.
-
-        Args:
-            container: Contenedor Docker
-
-        Returns:
-            Diccionario con información del contenedor
-        """
-        return DockerUtils.get_container_info(container)
+        """Obtiene información completa de un contenedor."""
+        try:
+            container.reload()
+            return {
+                "id": container.id[:12],
+                "status": container.status,
+                "image": container.image.tags[0] if container.image.tags else "unknown",
+                "created": container.attrs["Created"],
+                "labels": container.labels,
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
     def is_container_running(self, container: Any) -> bool:
-        """
-        Verifica si un contenedor está corriendo.
+        """Verifica si un contenedor está en ejecución."""
+        try:
+            container.reload()
+            return container.status == "running"
+        except:
+            return False
 
-        Args:
-            container: Contenedor Docker
-
-        Returns:
-            True si está corriendo, False en caso contrario
-        """
-        return DockerUtils.is_container_running(container)
+    def get_container_by_name(self, name: str) -> Any:
+        """Obtiene un contenedor por su nombre."""
+        try:
+            containers = self.client.containers.list(
+                all=True, filters={"name": name}
+            )
+            return containers[0] if containers else None
+        except:
+            return None
