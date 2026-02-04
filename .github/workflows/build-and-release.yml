@@ -38,7 +38,8 @@ jobs:
     - name: Build and push orchestrator image
       uses: docker/build-push-action@v6
       with:
-        context: orchestrator/docker
+        context: orchestrator
+        file: orchestrator/docker/Dockerfile
         build-args: |
           APP_VERSION=${{ github.ref_name }}
         push: true
@@ -52,7 +53,8 @@ jobs:
     - name: Build and push api-gateway image
       uses: docker/build-push-action@v6
       with:
-        context: api-gateway/docker
+        context: api-gateway
+        file: api-gateway/docker/Dockerfile
         build-args: |
           APP_VERSION=${{ github.ref_name }}
         push: true
