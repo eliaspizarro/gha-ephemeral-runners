@@ -148,7 +148,7 @@ Una vez configurado:
 ### 🔄 Configurar Puerto Personalizado
 
 ```bash
-# Edita docker-compose.yml y cambia:
+# Edita compose.yaml y cambia:
 # ports:
 #   - "9000:8080"  # Puerto host según necesites
 

@@ -23,7 +23,7 @@ class EnvironmentManager:
     def load_runner_environment(self) -> Dict[str, str]:
         """
         Carga variables de entorno con prefijo runnerenv_.
-        Las variables deben venir del docker-compose.yml a través del .env del host.
+        Las variables deben venir del compose.yaml a través del .env del host.
 
         Returns:
             Diccionario de variables de entorno para el runner
@@ -48,7 +48,7 @@ class EnvironmentManager:
         if len(runner_env) == 0:
             logger.warning("No se encontraron variables runnerenv_ en el entorno del contenedor")
             logger.warning(
-                "Asegúrate de que el docker-compose.yml esté pasando correctamente las variables runnerenv_"
+                "Asegúrate de que el compose.yaml esté pasando correctamente las variables runnerenv_"
             )
             logger.warning(
                 "Verifica que el archivo .env del host contenga las variables runnerenv_*"
