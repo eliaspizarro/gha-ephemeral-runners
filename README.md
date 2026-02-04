@@ -4,15 +4,11 @@ Plataforma para crear y destruir runners self-hosted de GitHub Actions de forma 
 
 ## 🚀 Características Principales
 
-- **🏗️ Arquitectura Modular**: Estructura limpia, mantenible y escalable
-- **🎯 Centralización de Versiones**: Single source of truth por servicio
-- **📊 Logging Estandarizado**: Categorías y emojis consistentes en toda la arquitectura
+- **🏗️ Arquitectura Modular**: API Gateway + Orchestrator + Runners
 - **🤖 Automático**: Descubre repos y crea runners sin configuración manual
 - **🔄 Efímeros**: Crear → Usar → Destruir automáticamente
 - **🔒 Seguros**: Tokens temporales, sin persistencia de datos sensibles
 - **📈 Escalables**: Creación masiva de runners bajo demanda
-- **🎯 Minimalistas**: Sin monitoreo ni métricas innecesarias
-- **⚡ Repo-first**: Despliegue sin infraestructura previa
 - **🚀 Deploy-Ready**: Configuración centralizada en deploy/
 
 ## 🏗️ Arquitectura
@@ -32,158 +28,84 @@ graph LR
 
 ### Componentes
 
-1. **API Gateway**: Punto de entrada HTTP público, validación y rate limiting
-   - **Endpoints públicos**: `/api/v1/*`
-   - **Validación**: Field validators en modelos Pydantic
-   - **Respuestas**: Estandarizadas con `APIResponse`
-   - **Logging**: Middleware optimizado con categorías y emojis
-
-2. **Orquestador**: Gestión interna de runners, descubrimiento y ciclo de vida
-   - **Endpoints internos**: `/runners/*` (solo para debugging)
-   - **Monitoreo**: Automático si `AUTO_CREATE_RUNNERS=true`
-   - **Confianza**: Asume datos validados del Gateway
-   - **Logging**: Sistema estandarizado consistente
-
+1. **API Gateway** (8080): Punto de entrada HTTP público, validación y rate limiting
+2. **Orquestador** (8000): Gestión interna de runners, descubrimiento y ciclo de vida  
 3. **Runner**: Contenedor efímero que ejecuta jobs y se autodestruye
-   - **Imagen**: Configurable via `RUNNER_IMAGE`
-   - **Aislamiento**: Contenedor Docker aislado
-   - **Autodestrucción**: Eliminación automática post-job
 
 ### Flujo de Datos
-
 ```
-Cliente → API Gateway → Orquestador → Docker
-   ↓         ↓           ↓          ↓
-Valida   Enruta     Gestiona   Crea
+Cliente → API Gateway → Orquestador → Docker → Runner
 ```
 
 ## 📁 Estructura del Proyecto
 
-### 📦 Arquitectura Modular
-
 ```
 gha-ephemeral-runners/
-├── deploy/                    # 🚀 Configuración de despliegue
-│   ├── compose.yaml          # Docker Compose actualizado
-│   ├── .env.example           # Plantilla de configuración
-│   └── .env                   # Variables de entorno
-├── api-gateway/               # 🌐 Servicio Gateway (puerto 8080)
-│   ├── docker/               # Configuración Docker específica
-│   │   ├── Dockerfile
-│   │   └── healthcheck.go
+├── deploy/                    # Configuración de despliegue
+│   ├── compose.yaml          # Docker Compose
+│   └── .env.example           # Variables de entorno
+├── api-gateway/               # Servicio Gateway (8080)
+│   ├── docker/               # Dockerfile y healthcheck
 │   ├── scripts/              # Scripts del servicio
-│   │   └── build.sh
-│   ├── src/                  # Código fuente modular
-│   │   ├── api/             # Endpoints y modelos
-│   │   ├── core/            # Configuración y servicio
-│   │   ├── middleware/      # Middleware de logging y errores
-│   │   ├── services/       # Lógica de negocio
-│   │   └── utils/          # Utilidades y helpers
-│   ├── version.py           # 🎯 Single source of truth
-│   ├── main.py              # Punto de entrada
-│   └── requirements.txt     # Dependencias
-├── orchestrator/              # 🔧 Servicio Orchestrator (puerto 8000)
-│   ├── docker/               # Configuración Docker específica
-│   │   ├── Dockerfile
-│   │   └── healthcheck.go
-│   ├── src/                  # Código fuente modular
-│   │   ├── api/             # Endpoints y modelos
-│   │   ├── core/            # Lógica principal
-│   │   ├── services/       # Servicios de negocio
-│   │   └── utils/          # Utilidades y helpers
-│   ├── version.py           # 🎯 Single source of truth
-│   ├── main.py              # Punto de entrada
-│   └── requirements.txt     # Dependencias
-├── scripts/                   # 🛠️ Scripts globales
-│   └── update-version.py    # Actualización de versiones
-├── .github/workflows/         # 🔄 CI/CD
-│   └── build-and-release.yml # Build y release automatizado
-└── README.md                  # 📚 Documentación principal
+│   ├── src/                  # Código fuente
+│   └── version.py           # Versión del servicio
+├── orchestrator/              # Servicio Orchestrator (8000)
+│   ├── docker/               # Dockerfile y healthcheck
+│   ├── scripts/              # Scripts del servicio
+│   ├── src/                  # Código fuente
+│   └── version.py           # Versión del servicio
+├── .github/workflows/         # CI/CD automatizado
+└── README.md                  # Documentación
 ```
-
-### 🎯 Roles de los Componentes
-
-- **API Gateway**: Punto de entrada HTTP público, validación y rate limiting
-- **Orquestador**: Gestión interna de runners, descubrimiento y ciclo de vida
-- **Deploy**: Configuración centralizada de despliegue y variables de entorno
-- **Scripts**: Utilidades globales de mantenimiento y automatización
-- **CI/CD**: Build automatizado con versiones dinámicas y releases
 
 ## 🚀 Inicio Rápido
 
-### ⚡ Modo Automático (Zero Configuration)
+### ⚡ Modo Automático
 
-**Recomendado para la mayoría de usuarios - Sin configuración manual**
-
-1. **Configurar variables**:
+1. **Configurar variables obligatorias**:
    ```bash
    cd deploy
    cp .env.example .env
-   # Editar .env con tus valores:
-   nano .env
    ```
 
-2. **Configurar variables obligatorias en .env**:
+2. **Editar .env con valores requeridos**:
    ```bash
-   # Token de GitHub (obligatorio)
-   GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
-   
-   # Imagen de runners (obligatorio)
+   GITHUB_RUNNER_TOKEN=ghp_tu_token_aqui
    RUNNER_IMAGE=myoung34/github-runner:latest
-   
-   # Registry (obligatorio)
    REGISTRY=localhost
    IMAGE_VERSION=latest
-   
-   # Automatización (opcional)
    AUTO_CREATE_RUNNERS=true
-   RUNNER_CHECK_INTERVAL=60
    ```
 
-3. **Inicia el sistema**:
+3. **Iniciar sistema**:
    ```bash
-   cd deploy
    docker compose up -d
    ```
 
 4. **Verificar funcionamiento**:
-   ```bash
-   curl http://localhost:8080/health
-   ```
+   - API Gateway: http://localhost:8080/health
+   - Orchestrator: http://localhost:8000/health
 
 **¡Listo! El sistema descubrirá automáticamente todos tus repos y creará runners cuando se necesiten.**
 
-### 🔧 Modo Manual (Control Total)
+## ⚙️ Variables de Entorno
 
-**Para usuarios que quieren control total sobre la creación de runners**
+### Obligatorias
+- `GITHUB_RUNNER_TOKEN`: Token de GitHub para gestión de runners
+- `REGISTRY`: URL de tu registry (localhost para desarrollo)
+- `IMAGE_VERSION`: Versión de imágenes (latest para desarrollo)
+- `RUNNER_IMAGE`: Imagen Docker para runners
 
-1. **Configurar variables básicas**:
-   ```bash
-   cd deploy
-   cp .env.example .env
-   # Editar .env con valores básicos (sin automatización)
-   ```
+### Automatización
+- `AUTO_CREATE_RUNNERS`: Activar creación automática (true/false, default: false)
+- `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 60)
 
-2. **Inicia el sistema**:
-   ```bash
-   cd deploy
-   docker compose up -d
-   ```
+## 🌐 Requisitos de Infraestructura
 
-3. **Crea runners manualmente**:
-   ```bash
-   curl -X POST http://localhost:8080/api/v1/runners \
-     -H "Content-Type: application/json" \
-     -d '{"scope": "repo", "scope_name": "tu-repo/main", "count": 1}'
-   ```
-
-### 📋 Requisitos
-
-- **Docker y Docker Compose**
-- **Token de GitHub** con scopes: `repo`, `admin:org`, `workflow`
-- **Registry** para imágenes (puede ser localhost para desarrollo)
-
-## 🎯 Gestión de Versiones
+- **Puertos**: API Gateway (8080), Orchestrator (8000) - solo internos
+- **Proxy**: Requerido reverse proxy (nginx/traefik) para exposición pública
+- **NAT**: Puede operar detrás de NAT sin puertos publicados
+- **Docker**: Engine 20.10+ con soporte para redes overlay
 
 ### 🎯 Single Source of Truth
 
@@ -351,93 +273,50 @@ GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
 El sistema descubre automáticamente todos tus repositorios y crea runners cuando se necesitan:
 
 ```mermaid
+%%{init: {
+  "theme": "dark",
+  "themeVariables": {
+    "fontFamily": "Inter, Segoe UI, Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#EAEAEA",
+    "lineColor": "#9CA3AF",
+    "noteTextColor": "#EAEAEA",
+    "noteBkgColor": "#1F2937",
+    "noteBorderColor": "#374151",
+    "actorBkg": "#020617",
+    "actorBorder": "#475569"
+  }
+}}%%
+
 sequenceDiagram
-    participant SYS as Sistema
+    autonumber
+
+    participant ORQ as Orchestrator
     participant GH as GitHub API
     participant DOCKER as Docker
     participant RUN as Runner
 
-    Note over SYS: Inicio cada 60 segundos
-    SYS->>GH: Obtener todos los repos
-    SYS->>GH: Analizar workflows de cada repo
-    SYS->>SYS: Filtrar repos con "runs-on: self-hosted"
-    SYS->>GH: Verificar jobs en cola
-    SYS->>DOCKER: Crear runner si hay jobs sin runners
-    DOCKER->>RUN: Iniciar container
-    RUN->>GH: Registrarse como runner
-    GH->>RUN: Asignar job
-    RUN->>RUN: Ejecutar workflow
-    RUN->>DOCKER: Autodestruir
+    Note over ORQ: Ciclo automático cada 60 segundos
+
+    rect rgb(30,58,138)
+        ORQ->>GH: Obtener repositorios
+        ORQ->>GH: Analizar workflows
+        ORQ->>ORQ: Filtrar runs-on: self-hosted
+        ORQ->>GH: Verificar jobs en cola
+    end
+
+    rect rgb(11,58,74)
+        ORQ->>DOCKER: Crear runner si no hay disponible
+        DOCKER->>RUN: Iniciar contenedor
+        RUN->>GH: Registrarse como runner
+    end
+
+    rect rgb(20,83,45)
+        GH->>RUN: Asignar job
+        RUN->>RUN: Ejecutar workflow
+        RUN->>DOCKER: Autodestruir runner
+    end
 ```
-
-### 📋 Flujo Automático
-
-1. **🔍 Descubrimiento**: Obtiene todos tus repositorios (personales y de organización)
-2. **📂 Análisis**: Descarga y analiza los archivos `.github/workflows/*.yml`
-3. **🎯 Detección**: Identifica repos que usan `runs-on: self-hosted`
-4. **⏱️ Monitoreo**: Cada 60 segundos verifica si hay jobs en cola
-5. **🚀 Creación**: Crea runners automáticamente si hay jobs en cola
-6. **🧹 Limpieza**: Los runners se autodestruyen después de completar los jobs
-
-### ⚙️ Configuración de Automatización
-
-```bash
-# En deploy/.env
-AUTO_CREATE_RUNNERS=true              # Activar automatización
-RUNNER_CHECK_INTERVAL=60              # Verificar cada 60 segundos
-DISCOVERY_MODE=all                    # 'all' (todos) o 'organization'
-```
-
-## 📚 Endpoints de la API
-
-### API Gateway (Puerto 8080)
-
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/api/v1/runners` | POST | Crear runners efímeros |
-| `/api/v1/runners` | GET | Listar todos los runners activos |
-| `/api/v1/runners/{id}` | GET | Ver estado de un runner específico |
-| `/api/v1/runners/{id}` | DELETE | Destruir un runner específico |
-| `/api/v1/runners/cleanup` | POST | Limpiar runners inactivos |
-| `/health` | GET | Health check básico |
-| `/api/v1/health` | GET | Health check completo |
-| `/healthz` | GET | Health check para Docker |
-| `/docs` | GET | Documentación Swagger UI |
-| `/redoc` | GET | Documentación ReDoc |
-
-### Health Checks
-
-El sistema incluye múltiples endpoints de verificación:
-- **Básico**: `/health` - Estado simple del gateway
-- **Completo**: `/api/v1/health` - Incluye estado del orquestador
-- **Docker**: `/healthz` - Para orquestación de contenedores (sin logs verbosos)
-
-## 🔧 Variables de Entorno
-
-### Obligatorias
-- `GITHUB_RUNNER_TOKEN`: Token de GitHub para gestión de runners
-- `REGISTRY`: URL de tu registry (puede ser localhost para desarrollo)
-- `IMAGE_VERSION`: Versión de imágenes (latest para desarrollo)
-- `RUNNER_IMAGE`: Imagen Docker para runners
-
-### Automatización (Opcional)
-- `AUTO_CREATE_RUNNERS`: Activar creación automática (`true`/`false`, default: `false`)
-- `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: `60`)
-- `DISCOVERY_MODE`: Modo de descubrimiento (`all`/`organization`, default: `all`)
-
-### Opcionales
-- `CORS_ORIGINS`: Orígenes permitidos para CORS (default: `"*"`)
-  - Producción: `https://yourdomain.com`
-  - Desarrollo: `*`
-- `API_GATEWAY_PORT`: Puerto interno del contenedor API Gateway (default: `8080`)
-- `ORCHESTRATOR_PORT`: Puerto interno del contenedor Orchestrator (default: `8000`)
-
-## 🌐 Requisitos de Infraestructura
-
-- **Puertos**: API Gateway (8080), Orchestrator (8000) - solo internos
-- **Proxy**: Requerido reverse proxy (nginx/traefik) para exposición pública
-- **NAT**: Puede operar detrás de NAT sin puertos publicados
-- **Docker**: Engine 20.10+ con soporte para redes overlay
 
 ## 🔒 Seguridad
 
@@ -447,28 +326,7 @@ El sistema incluye múltiples endpoints de verificación:
 
 ## 🔄 CI/CD y Build
 
-### 🔄 Build and Release Workflow
-
-**Trigger**: Tags con prefijo `v*` (ej: `v1.2.3`)
-
-**Funcionalidades:**
-- **Build x86_64**: Construye imágenes para `linux/amd64`
-- **Context corregido**: `orchestrator/docker` y `api-gateway/docker`
-- **Versiones dinámicas**: Build args `APP_VERSION=${{ github.ref_name }}`
-- **Tags dobles**: Publica con tags `:latest` y `:versión`
-- **Changelog automático**: Genera changelog desde el tag anterior
-- **GitHub Release**: Crea release con changelog incluido
-
-**Imágenes generadas:**
-```
-your-registry.com/gha-orchestrator:latest
-your-registry.com/gha-orchestrator:v1.2.3
-
-your-registry.com/gha-api-gateway:latest
-your-registry.com/gha-api-gateway:v1.2.3
-```
-
-### 🛠️ Scripts de Build y Versión
+### Scripts de Build y Versión
 
 Cada servicio tiene sus propios scripts independientes:
 
