@@ -68,6 +68,14 @@ jobs:
         tag: ${{ github.ref_name }}
         excludeTypes: 'chore,docs,style,refactor,test,build'
         writeToFile: false
+        includeInvalidCommits: true
+
+    - name: Create fallback changelog
+      if: steps.changelog.outputs.changes == ''
+      run: |
+        echo "changes=No hay cambios convencionales desde la última versión. Ver todos los commits en [Comparación](https://github.com/${{ github.repository }}/compare/v${{ env.PREVIOUS_TAG }}...${{ github.ref_name }})" >> $GITHUB_OUTPUT
+      env:
+        PREVIOUS_TAG: ${{ steps.changelog.outputs.previousTag }}
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -78,6 +86,6 @@ jobs:
 
           ### 📋 Cambios
 
-          ${{ steps.changelog.outputs.changes }}
+          ${{ steps.changelog.outputs.changes || steps.fallback.outputs.changes }}
         draft: false
         prerelease: false
