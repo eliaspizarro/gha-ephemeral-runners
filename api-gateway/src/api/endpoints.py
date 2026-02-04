@@ -1,17 +1,19 @@
 """
-API Gateway - FastAPI Endpoints
-Contains all HTTP endpoints for the API Gateway service.
+API Gateway - Endpoints Configuration
+Contains all API endpoints for the gateway service.
 """
 
 import logging
-from typing import List
+from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from src.api.models import APIResponse, RunnerRequest
 from src.config.settings import ORCHESTRATOR_URL, DEFAULT_HEADERS
 from src.utils.helpers import format_log
 from src.services.request_router import RequestRouter
+from ..version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +112,7 @@ async def full_health_check():
             data={
                 "status": "healthy",
                 "service": "api-gateway",
-                "version": "1.0.0",
+                "version": __version__,
                 "orchestrator": orchestrator_health.get("status", "unknown")
             },
             message="Gateway y orchestrator funcionando correctamente",
@@ -123,7 +125,7 @@ async def full_health_check():
             data={
                 "status": "degraded",
                 "service": "api-gateway",
-                "version": "1.0.0",
+                "version": __version__,
                 "orchestrator": "unreachable"
             },
             message="Gateway con problemas en orchestrator",

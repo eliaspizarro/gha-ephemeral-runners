@@ -2,8 +2,11 @@ FROM python:3.12-slim
 
 # Metadatos
 LABEL maintainer="GHA Ephemeral Runners"
-LABEL version="1.0.0"
 LABEL description="API Gateway para runners efímeros de GitHub Actions"
+
+# Build argument para versión
+ARG APP_VERSION=1.1.0
+LABEL version=${APP_VERSION}
 
 # Variables de entorno
 ENV PYTHONUNBUFFERED=1
@@ -27,7 +30,9 @@ COPY healthcheck.go .
 RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
-COPY . .
+COPY version.py .
+COPY src ./src
+COPY main.py .
 
 # Exponer puerto
 EXPOSE 8080

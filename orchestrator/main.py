@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from src.api.models import *
 from src.core.orchestrator import OrchestratorService
 from src.utils.helpers import ErrorHandler, setup_logging_config, format_log
+from .version import __version__
 
 # Configurar logging ANTES de inicializar el servicio
 setup_logging_config()
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="GitHub Actions Ephemeral Runners Orchestrator",
     description="Servicio para gestionar runners efímeros de GitHub Actions",
-    version="1.0.0",
+    version=__version__,
     lifespan=lifespan,
 )
 

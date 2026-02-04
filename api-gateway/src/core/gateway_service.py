@@ -20,6 +20,7 @@ from src.config.settings import (
 )
 from src.middleware.error_handlers import setup_exception_handlers
 from src.utils.helpers import setup_logging_config, log_request_info, format_log
+from ..version import __version__
 
 # Configure logging
 setup_logging_config()
@@ -113,7 +114,7 @@ def create_app() -> FastAPI:
                 data={
                     "status": "healthy",
                     "service": "api-gateway",
-                    "version": "1.0.0",
+                    "version": __version__,
                     "orchestrator": orchestrator_health.get("status", "unknown")
                 },
                 message="Gateway funcionando correctamente",
@@ -125,7 +126,7 @@ def create_app() -> FastAPI:
                 data={
                     "status": "degraded",
                     "service": "api-gateway",
-                    "version": "1.0.0",
+                    "version": __version__,
                     "orchestrator": "unreachable"
                 },
                 message="Gateway funcionando pero con problemas en orchestrator",
@@ -137,7 +138,7 @@ def create_app() -> FastAPI:
         try:
             from src.api.models import APIResponse
             return APIResponse(
-                data={"status": "healthy", "service": "api-gateway", "version": "1.0.0"},
+                data={"status": "healthy", "service": "api-gateway", "version": __version__},
                 message="Gateway saludable",
             )
         except Exception as e:

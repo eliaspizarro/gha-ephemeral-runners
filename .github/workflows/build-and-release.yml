@@ -32,6 +32,8 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: orchestrator/docker
+        build-args: |
+          APP_VERSION=${{ github.ref_name }}
         push: true
         tags: |
           ${{ vars.REGISTRY }}/gha-orchestrator:latest
@@ -44,6 +46,8 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: api-gateway/docker
+        build-args: |
+          APP_VERSION=${{ github.ref_name }}
         push: true
         tags: |
           ${{ vars.REGISTRY }}/gha-api-gateway:latest

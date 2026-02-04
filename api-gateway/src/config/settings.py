@@ -5,6 +5,7 @@ Contains environment variables, service configuration, and application constants
 
 import os
 from typing import Optional
+from ..version import __version__
 
 # Environment Variables
 API_GATEWAY_PORT: int = int(os.getenv("API_GATEWAY_PORT", "8080"))
@@ -13,7 +14,7 @@ ORCHESTRATOR_URL: str = f"http://orchestrator:{ORCHESTRATOR_PORT}"
 CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
 # Service Configuration
-USER_AGENT: str = "GHA-API-Gateway/1.0.0"
+USER_AGENT: str = f"GHA-API-Gateway/{__version__}"
 
 # Logging Configuration
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -21,7 +22,7 @@ LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 # Application Constants
 APP_TITLE: str = "GitHub Actions Ephemeral Runners API Gateway"
 APP_DESCRIPTION: str = "Gateway para la plataforma de runners efímeros de GitHub Actions"
-APP_VERSION: str = "1.0.0"
+APP_VERSION: str = __version__
 API_PREFIX: str = "/api/v1"
 
 # Health Check Configuration

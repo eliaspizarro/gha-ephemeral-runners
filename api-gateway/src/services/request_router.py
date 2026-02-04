@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 import httpx
 from fastapi import HTTPException
 
+from ..version import __version__
 from src.utils.helpers import format_log
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,10 @@ class RequestRouter:
         self.max_retries = 3  # Hardcodeado
 
         # Configurar headers base
-        self.headers = headers or {"Content-Type": "application/json", "User-Agent": "GHA-API-Gateway/1.0.0"}
+        self.headers = headers or {
+            "Content-Type": "application/json", 
+            "User-Agent": f"GHA-API-Gateway/{__version__}"
+        }
 
     async def forward_request_with_retry(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         """
