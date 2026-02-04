@@ -7,8 +7,7 @@ LABEL description="Orquestador de runners efímeros de GitHub Actions"
 # Build arguments para versión y configuración
 ARG REGISTRY=localhost
 ARG IMAGE_VERSION=latest
-ARG APP_VERSION=1.1.0
-LABEL version=${APP_VERSION}
+LABEL version=${IMAGE_VERSION}
 
 # Variables de entorno
 ENV PYTHONUNBUFFERED=1

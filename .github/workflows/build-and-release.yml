@@ -42,7 +42,6 @@ jobs:
         context: orchestrator
         file: orchestrator/docker/Dockerfile
         build-args: |
-          APP_VERSION=${{ env.CLEAN_VERSION }}
           REGISTRY=${{ vars.REGISTRY }}
           IMAGE_VERSION=${{ env.CLEAN_VERSION }}
         push: true
@@ -59,7 +58,6 @@ jobs:
         context: api-gateway
         file: api-gateway/docker/Dockerfile
         build-args: |
-          APP_VERSION=${{ env.CLEAN_VERSION }}
           REGISTRY=${{ vars.REGISTRY }}
           IMAGE_VERSION=${{ env.CLEAN_VERSION }}
         push: true
