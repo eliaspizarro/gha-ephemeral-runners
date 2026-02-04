@@ -114,6 +114,37 @@ Valida   Enruta     Gestiona   Crea
 - **Token de GitHub** con scopes: `repo`, `admin:org`, `workflow`
 - **Registry privado** con imágenes: `gha-orchestrator`, `gha-api-gateway`
 
+## 🌐 Configuración de Redes y Proxy
+
+### Configuración con Nginx Proxy Manager
+
+Para despliegue en producción con dominio personalizado:
+
+#### 1. Proxy Host
+- **Domain**: `gha.yourdomain.com`
+- **Scheme**: `http`
+- **Forward Hostname/IP**: `localhost`
+- **Forward Port**: `8080`
+
+#### 2. SSL Certificate
+- Habilitar SSL Certificate
+- Seleccionar certificado Let's Encrypt
+
+#### 3. Configuración CORS
+```bash
+# Para producción con dominio específico
+CORS_ORIGINS=https://yourdomain.com
+
+# Para desarrollo local/red (acepta cualquier origen)
+# CORS_ORIGINS=*
+```
+
+#### 4. URLs de Acceso
+Una vez configurado:
+- **API Gateway**: `https://gha.yourdomain.com`
+- **Documentación**: `https://gha.yourdomain.com/docs`
+- **Health Check**: `https://gha.yourdomain.com/health`
+
 ### 🔄 Configurar Puerto Personalizado
 
 ```bash
@@ -243,7 +274,7 @@ curl http://localhost:8080/api/v1/health
 docker compose logs -f orchestrator
 ```
 
-## 📚 Endpoints
+## 📚 Endpoints de la API
 
 ### API Gateway (Puerto 8080)
 | Endpoint | Método | Descripción |
@@ -259,9 +290,10 @@ docker compose logs -f orchestrator
 | `/redoc` | GET | Documentación ReDoc |
 
 ### Health Checks
-Los servicios incluyen health checks nativos:
-- **API Gateway**: `/healthz` (Docker), `/health` (básico), `/api/v1/health` (completo)
-- **Orquestador**: `/healthz` (Docker), `/health` (con runners)
+El sistema incluye múltiples endpoints de verificación:
+- **Básico**: `/health` - Estado simple del gateway
+- **Completo**: `/api/v1/health` - Incluye estado del orquestador
+- **Docker**: `/healthz` - Para orquestación de contenedores
 
 ## 🔧 Variables de Entorno
 
@@ -278,6 +310,8 @@ Los servicios incluyen health checks nativos:
 
 ### Opcionales
 - `CORS_ORIGINS`: Orígenes permitidos para CORS (default: "*" - acepta cualquier origen)
+  - Producción: `https://yourdomain.com`
+  - Desarrollo: `*`
 
 ## 🔒 Seguridad
 

@@ -148,17 +148,9 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Endpoints de la API
+# Ver documentación completa en README.md sección "📚 Endpoints de la API"
 @app.post("/api/v1/runners", response_model=APIResponse)
 async def create_runners(request: RunnerRequest):
-    """
-    Crea uno o más runners efímeros.
-
-    Args:
-        request: Parámetros para crear runners
-
-    Returns:
-        Lista de runners creados
-    """
     try:
         # Validar solicitud
         router.validate_runner_request(request.dict())
@@ -177,15 +169,6 @@ async def create_runners(request: RunnerRequest):
 
 @app.get("/api/v1/runners/{runner_id}", response_model=APIResponse)
 async def get_runner_status(runner_id: str):
-    """
-    Obtiene el estado de un runner específico.
-
-    Args:
-        runner_id: ID del runner
-
-    Returns:
-        Estado del runner
-    """
     try:
         status = await router.get_runner_status(runner_id)
 
@@ -200,15 +183,6 @@ async def get_runner_status(runner_id: str):
 
 @app.delete("/api/v1/runners/{runner_id}", response_model=APIResponse)
 async def destroy_runner(runner_id: str):
-    """
-    Destruye un runner específico.
-
-    Args:
-        runner_id: ID del runner a destruir
-
-    Returns:
-        Confirmación de destrucción
-    """
     try:
         result = await router.destroy_runner(runner_id)
 
@@ -223,12 +197,6 @@ async def destroy_runner(runner_id: str):
 
 @app.get("/api/v1/runners", response_model=APIResponse)
 async def list_runners():
-    """
-    Lista todos los runners activos.
-
-    Returns:
-        Lista de runners activos
-    """
     try:
         runners = await router.list_runners()
 
@@ -243,12 +211,6 @@ async def list_runners():
 
 @app.post("/api/v1/runners/cleanup", response_model=APIResponse)
 async def cleanup_runners():
-    """
-    Limpia runners inactivos.
-
-    Returns:
-        Resultado de la limpieza
-    """
     try:
         result = await router.cleanup_runners()
 
@@ -261,15 +223,9 @@ async def cleanup_runners():
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
-# Endpoints de health check
+# Health checks - Ver README.md sección "Health Checks" para detalles
 @app.get("/health", response_model=APIResponse)
 async def health_check():
-    """
-    Verificación básica de salud del gateway.
-
-    Returns:
-        Estado del servicio
-    """
     return APIResponse(
         data={"status": "healthy", "service": "api-gateway", "version": "1.0.0"},
         message="Gateway funcionando correctamente",
@@ -278,13 +234,6 @@ async def health_check():
 
 @app.get("/healthz", response_model=APIResponse)
 async def docker_health_check():
-    """
-    Health check nativo para Docker.
-    Retorna HTTP 200 para healthy, HTTP 503 para unhealthy.
-
-    Returns:
-        Estado del servicio para Docker
-    """
     try:
         # Verificar configuración básica
         return APIResponse(
@@ -298,12 +247,6 @@ async def docker_health_check():
 
 @app.get("/api/v1/health", response_model=APIResponse)
 async def full_health_check():
-    """
-    Verificación completa de salud incluyendo orquestador.
-
-    Returns:
-        Estado completo del sistema
-    """
     try:
         # Verificar orquestador
         orchestrator_health = await router.health_check()
