@@ -8,8 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from docker.errors import DockerException
 from docker.models.containers import Container
-from error_handler import DockerError, ErrorHandler
-from utils import format_container_id, setup_logger
+from src.utils.helpers import DockerError, ErrorHandler, format_container_id, setup_logger
 
 logger = setup_logger(__name__)
 

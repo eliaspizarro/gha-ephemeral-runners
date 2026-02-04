@@ -19,7 +19,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copiar requirements e instalar dependencias Python
-COPY requirements.txt .
+COPY ../requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Compilar health check de Go
@@ -27,11 +27,11 @@ COPY healthcheck.go .
 RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
-COPY . .
+COPY ../ .
 
 # Health check nativo en Go compilado
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ./healthcheck || exit 1
 
 # Comando de inicio
-CMD ["python", "orchestrator_service.py"]
+CMD ["python", "main.py"]

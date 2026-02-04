@@ -6,10 +6,9 @@ from typing import Any, Dict, List, Optional
 
 import docker
 from docker.models.containers import Container
-from docker_utils import DockerError, DockerUtils
-from environment_manager import EnvironmentManager
-from error_handler import ErrorHandler
-from utils import format_container_id, validate_runner_name
+from src.services.docker import DockerError, DockerUtils
+from src.services.environment import EnvironmentManager
+from src.utils.helpers import ErrorHandler, format_container_id, validate_runner_name
 
 logger = logging.getLogger(__name__)
 

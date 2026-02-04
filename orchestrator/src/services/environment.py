@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from placeholder_resolver import PlaceholderResolver
+from src.utils.helpers import PlaceholderResolver
 
 logger = logging.getLogger(__name__)
 

@@ -5,9 +5,9 @@ import time
 from typing import Dict, List, Optional
 
 import requests
-from container_manager import ContainerManager
+from src.core.container import ContainerManager
 from docker.models.containers import Container
-from token_generator import TokenGenerator
+from src.services.tokens import TokenGenerator
 
 logger = logging.getLogger(__name__)
 
