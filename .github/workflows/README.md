@@ -40,7 +40,7 @@ permissions:
 2. **Docker Buildx** - Configura build multiplataforma
 3. **Login** - Autenticación en el registry
 4. **Build Images** - Construye las 2 imágenes:
-   - `gha-orchestrator` 
+   - `gha-orchestrator`
    - `gha-api-gateway`
 5. **Verify Images** - Verifica que las imágenes existen en el registry
 6. **Get previous tag** - Identifica tag anterior para changelog

@@ -6,7 +6,7 @@ Plataforma para crear y destruir runners self-hosted de GitHub Actions de forma 
 
 - **🤖 Automático**: Descubre repos y crea runners sin configuración manual
 - **🔄 Efímeros**: Crear → Usar → Destruir automáticamente
-- **🔒 Seguros**: Tokens temporales, sin persistencia de datos sensibles  
+- **🔒 Seguros**: Tokens temporales, sin persistencia de datos sensibles
 - **📈 Escalables**: Creación masiva de runners bajo demanda
 - **🎯 Minimalistas**: Sin monitoreo ni métricas innecesarias
 - **⚡ Repo-first**: Despliegue sin infraestructura previa
@@ -21,7 +21,7 @@ graph LR
         AG --> |HTTP| ORQ[Orquestador:8000]
         ORQ --> |Docker| RUN[Runner Efímero]
     end
-    
+
     style AG fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b
     style ORQ fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c
     style RUN fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#1b5e20
@@ -30,7 +30,7 @@ graph LR
 ### Componentes
 
 1. **API Gateway**: Punto de entrada HTTP público, validación y rate limiting
-   - **Endpoints públicos**: `/api/v1/*` 
+   - **Endpoints públicos**: `/api/v1/*`
    - **Validación**: Field validators en modelos Pydantic
    - **Respuestas**: Estandarizadas con `APIResponse`
 
@@ -148,7 +148,7 @@ jobs:
 ### 🔑 Scopes Requeridos
 
 - **`repo`** - Acceso completo a repositorios
-- **`admin:org`** - Administración de organización  
+- **`admin:org`** - Administración de organización
 - **`workflow`** - Ejecutar workflows de GitHub Actions
 
 ### 🔧 Creación del Token
@@ -177,7 +177,7 @@ sequenceDiagram
     participant GH as GitHub API
     participant DOCKER as Docker
     participant RUN as Runner
-    
+
     Note over SYS: Inicio cada 60 segundos
     SYS->>GH: Obtener todos los repos
     SYS->>GH: Analizar workflows de cada repo

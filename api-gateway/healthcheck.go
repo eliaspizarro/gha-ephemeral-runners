@@ -17,27 +17,27 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	// Esperar a que el servicio esté listo
 	time.Sleep(5 * time.Second)
-	
+
 	// Realizar health check
 	url := fmt.Sprintf("http://localhost:%s/healthz", port)
-	
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	
+
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Fatalf("Health check failed: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		log.Fatalf("Health check failed with status: %d", resp.StatusCode)
 	}
-	
+
 	log.Printf("Health Check OK [Res Code: %d]\n", resp.StatusCode)
 	os.Exit(0)
 }
