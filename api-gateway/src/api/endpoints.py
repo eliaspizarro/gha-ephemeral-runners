@@ -100,10 +100,10 @@ async def cleanup_runners():
 
 
 @router.get("/health", response_model=APIResponse)
-async def health_check():
-    """Basic health check endpoint."""
+async def full_health_check():
+    """Full health check including orchestrator."""
     try:
-        # Verificar conexión con orchestrator
+        # Check orchestrator
         orchestrator_health = await request_router.get_health()
         
         return APIResponse(
@@ -113,10 +113,12 @@ async def health_check():
                 "version": "1.0.0",
                 "orchestrator": orchestrator_health.get("status", "unknown")
             },
-            message="Gateway funcionando correctamente",
+            message="Gateway y orchestrator funcionando correctamente",
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(format_log('ERROR', 'Error verificando salud del orchestrator', str(e)))
+        logger.error(format_log('ERROR', 'Error en health check completo', str(e)))
         return APIResponse(
             data={
                 "status": "degraded",
@@ -124,54 +126,5 @@ async def health_check():
                 "version": "1.0.0",
                 "orchestrator": "unreachable"
             },
-            message="Gateway funcionando pero con problemas en orchestrator",
-        )
-
-
-@router.get("/healthz", response_model=APIResponse)
-async def docker_health_check():
-    """Docker health check endpoint."""
-    try:
-        return APIResponse(
-            data={"status": "healthy", "service": "api-gateway", "version": "1.0.0"},
-            message="Gateway saludable",
-        )
-    except Exception as e:
-        logger.error(f"Health check falló: {e}")
-        raise HTTPException(status_code=503, detail="Servicio no saludable")
-
-
-@router.get("/api/v1/health", response_model=APIResponse)
-async def full_health_check():
-    """Full health check including orchestrator."""
-    try:
-        # Check orchestrator
-        orchestrator_health = await request_router.health_check()
-
-        return APIResponse(
-            data={
-                "gateway": {"status": "healthy", "service": "api-gateway", "version": "1.0.0"},
-                "orchestrator": orchestrator_health,
-                "system": {
-                    "status": (
-                        "healthy"
-                        if orchestrator_health.get("status") == "healthy"
-                        else "degradado"
-                    )
-                },
-            },
-            message="Verificación de salud completada",
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en health check: {e}")
-        return APIResponse(
-            data={
-                "gateway": {"status": "healthy", "service": "api-gateway", "version": "1.0.0"},
-                "orchestrator": {"status": "unhealthy", "error": str(e)},
-                "system": {"status": "degradado"},
-            },
-            message="Error en verificación de salud",
+            message="Gateway con problemas en orchestrator",
         )
