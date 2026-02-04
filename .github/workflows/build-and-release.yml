@@ -20,8 +20,9 @@ jobs:
 
     - name: Update version files
       run: |
-        VERSION=${{ github.ref_name }}
-        CLEAN_VERSION=${VERSION#v}
+        VERSION=${{ github.ref_name }}        # v1.1.2
+        CLEAN_VERSION=${VERSION#v}            # 1.1.2
+        echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
         cd api-gateway/scripts && ./versioning.sh $CLEAN_VERSION
         cd ../../orchestrator/scripts && ./versioning.sh $CLEAN_VERSION
 
@@ -41,11 +42,13 @@ jobs:
         context: orchestrator
         file: orchestrator/docker/Dockerfile
         build-args: |
-          APP_VERSION=${{ github.ref_name }}
+          APP_VERSION=${{ env.CLEAN_VERSION }}
+          REGISTRY=${{ vars.REGISTRY }}
+          IMAGE_VERSION=${{ env.CLEAN_VERSION }}
         push: true
         tags: |
           ${{ vars.REGISTRY }}/gha-orchestrator:latest
-          ${{ vars.REGISTRY }}/gha-orchestrator:${{ github.ref_name }}
+          ${{ vars.REGISTRY }}/gha-orchestrator:${{ env.CLEAN_VERSION }}
         platforms: linux/amd64
         provenance: false
         sbom: false
@@ -56,22 +59,24 @@ jobs:
         context: api-gateway
         file: api-gateway/docker/Dockerfile
         build-args: |
-          APP_VERSION=${{ github.ref_name }}
+          APP_VERSION=${{ env.CLEAN_VERSION }}
+          REGISTRY=${{ vars.REGISTRY }}
+          IMAGE_VERSION=${{ env.CLEAN_VERSION }}
         push: true
         tags: |
           ${{ vars.REGISTRY }}/gha-api-gateway:latest
-          ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }}
+          ${{ vars.REGISTRY }}/gha-api-gateway:${{ env.CLEAN_VERSION }}
         platforms: linux/amd64
         provenance: false
         sbom: false
 
     - name: Verify orchestrator image exists
       run: |
-        docker pull ${{ vars.REGISTRY }}/gha-orchestrator:${{ github.ref_name }} && echo "Image exists" || (echo "Image not found" && exit 1)
+        docker pull ${{ vars.REGISTRY }}/gha-orchestrator:${{ env.CLEAN_VERSION }} && echo "Image exists" || (echo "Image not found" && exit 1)
 
     - name: Verify api-gateway image exists
       run: |
-        docker pull ${{ vars.REGISTRY }}/gha-api-gateway:${{ github.ref_name }} && echo "Image exists" || (echo "Image not found" && exit 1)
+        docker pull ${{ vars.REGISTRY }}/gha-api-gateway:${{ env.CLEAN_VERSION }} && echo "Image exists" || (echo "Image not found" && exit 1)
 
     - name: Generate changelog
       id: changelog

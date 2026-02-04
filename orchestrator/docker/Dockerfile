@@ -4,7 +4,9 @@ FROM python:3.12-slim
 LABEL maintainer="GHA Ephemeral Runners"
 LABEL description="Orquestador de runners efímeros de GitHub Actions"
 
-# Build argument para versión
+# Build arguments para versión y configuración
+ARG REGISTRY=localhost
+ARG IMAGE_VERSION=latest
 ARG APP_VERSION=1.1.0
 LABEL version=${APP_VERSION}
 
@@ -26,7 +28,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Compilar health check de Go
-COPY healthcheck.go .
+COPY docker/healthcheck.go .
 RUN go build -o healthcheck healthcheck.go
 
 # Copiar código de la aplicación
