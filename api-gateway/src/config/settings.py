@@ -5,7 +5,7 @@ Contains environment variables, service configuration, and application constants
 
 import os
 from typing import Optional
-from ..version import __version__
+from version import __version__
 
 # Environment Variables
 API_GATEWAY_PORT: int = int(os.getenv("API_GATEWAY_PORT", "8080"))

@@ -13,7 +13,7 @@ from src.api.models import APIResponse, RunnerRequest
 from src.config.settings import ORCHESTRATOR_URL, DEFAULT_HEADERS
 from src.utils.helpers import format_log
 from src.services.request_router import RequestRouter
-from ..version import __version__
+from version import __version__
 
 logger = logging.getLogger(__name__)
 

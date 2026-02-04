@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import httpx
 from fastapi import HTTPException
 
-from ..version import __version__
+from version import __version__
 from src.utils.helpers import format_log
 
 logger = logging.getLogger(__name__)

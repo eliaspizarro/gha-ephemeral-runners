@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 from src.api.models import *
 from src.core.orchestrator import OrchestratorService
 from src.utils.helpers import ErrorHandler, setup_logging_config, format_log
-from .version import __version__
+from version import __version__
 
 # Configurar logging ANTES de inicializar el servicio
 setup_logging_config()

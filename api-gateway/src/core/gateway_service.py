@@ -20,7 +20,7 @@ from src.config.settings import (
 )
 from src.middleware.error_handlers import setup_exception_handlers
 from src.utils.helpers import setup_logging_config, log_request_info, format_log
-from ..version import __version__
+from version import __version__
 
 # Configure logging
 setup_logging_config()
