@@ -153,38 +153,57 @@ class LifecycleManager:
 
         return runners
 
-    def cleanup_inactive_runners(self, max_idle_time: int = 3600) -> int:
+    def cleanup_inactive_runners(self) -> int:
         """
-        Limpia runners inactivos.
-
-        Args:
-            max_idle_time: Tiempo máximo de inactividad en segundos
+        Purga runners efímeros: destruye todos menos los que tienen workflows activos.
 
         Returns:
-            Número de runners limpiados
+            Número de runners purgados
         """
         try:
             cleaned_count = 0
+            runners_to_keep = set()  # Runners que tienen workflows activos
             runners_to_remove = []
 
+            # FASE 1: Identificar runners en uso
             for runner_id, container in self.active_runners.items():
                 try:
                     container.reload()
-                    if container.status == "exited":
+                    
+                    # Contenedores muertos siempre se eliminan
+                    if container.status not in ["running", "paused", "restarting"]:
                         runners_to_remove.append(runner_id)
-                except:
+                        continue
+                    
+                    # Verificar si tiene workflows activos
+                    repo = container.labels.get("repo")
+                    if repo:
+                        active_workflows = self.get_active_workflows_for_repo(repo)
+                        if active_workflows > 0:
+                            runners_to_keep.add(runner_id)
+                            logger.debug(f"Runner {runner_id} en uso: {active_workflows} workflows activos para {repo}")
+                        else:
+                            runners_to_remove.append(runner_id)
+                            
+                except Exception as e:
+                    logger.error(f"Error verificando runner {runner_id}: {e}")
                     runners_to_remove.append(runner_id)
 
-            # Remover runners inactivos
+            # FASE 2: Purgar runners no usados
             for runner_id in runners_to_remove:
-                success = self.destroy_runner(runner_id)
-                if success:
-                    cleaned_count += 1
+                if runner_id not in runners_to_keep:  # Doble seguridad
+                    success = self.destroy_runner(runner_id)
+                    if success:
+                        cleaned_count += 1
+                        logger.info(f"Runner {runner_id} purgado (sin workflows activos)")
+
+            if cleaned_count > 0:
+                logger.info(f"Purga completada: {cleaned_count} runners eliminados, {len(runners_to_keep)} runners activos mantenidos")
 
             return cleaned_count
 
         except Exception as e:
-            logger.error(f"Error en limpieza de runners: {e}")
+            logger.error(f"Error en purga de runners: {e}")
             return 0
 
     def start_monitoring(self, cleanup_interval: int = 300):
@@ -213,16 +232,24 @@ class LifecycleManager:
         logger.info("Monitoreo detenido")
 
     def _monitor_loop(self, cleanup_interval: int):
-        """Bucle de monitoreo con descubrimiento y creación automática."""
+        """Bucle de monitoreo con descubrimiento y purga automática."""
+        import os
+        
+        # Usar intervalo específico para purga (5 minutos por defecto)
+        purge_interval = int(os.getenv("RUNNER_PURGE_INTERVAL", "300"))
+        
         while self.monitoring:
             try:
-                # Limpieza normal (usando el mismo intervalo como max_idle_time)
-                self.cleanup_inactive_runners(max_idle_time=cleanup_interval)
+                # Purga de runners no usados (cada 5 minutos)
+                self.cleanup_inactive_runners()
 
-                # NUEVO: Descubrir y crear runners automáticamente
+                # Descubrir y crear runners automáticamente (cada cleanup_interval)
                 self.check_and_create_runners_for_jobs()
 
-                time.sleep(cleanup_interval)
+                # Usar el intervalo más corto para mayor reactividad
+                sleep_time = min(purge_interval, cleanup_interval)
+                time.sleep(sleep_time)
+                
             except Exception as e:
                 logger.error(f"Error en bucle de monitoreo: {e}")
                 time.sleep(60)  # Esperar antes de reintentar
@@ -249,8 +276,18 @@ class LifecycleManager:
                         if queued_jobs > 0:
                             logger.info(f"Detectados {queued_jobs} jobs en cola para {repo}")
 
-                            # Verificar runners activos
-                            active_runners = self.get_active_runners_for_repo(repo)
+                            # Verificar runners activos para este repo (lógica directa)
+                            active_runners = 0
+                            for runner_id, container in self.active_runners.items():
+                                try:
+                                    container.reload()
+                                    if container.status == "running":
+                                        labels = container.labels
+                                        if labels.get("repo") == repo or labels.get("scope_name") == repo:
+                                            active_runners += 1
+                                except:
+                                    # Runner ya no existe, remover de active_runners
+                                    self.active_runners.pop(runner_id, None)
 
                             # Crear runners si faltan
                             if active_runners < queued_jobs:
@@ -386,8 +423,8 @@ class LifecycleManager:
             logger.debug(f"Error verificando workflow de {repo}: {e}")
             return False
 
-    def get_queued_jobs_for_repo(self, repo: str) -> int:
-        """Verifica jobs en cola para un repositorio."""
+    def _get_workflow_runs_by_status(self, repo: str, status: str) -> int:
+        """Método genérico para obtener workflows por estado (reutilizable)."""
         try:
             owner, name = repo.split("/")
 
@@ -396,55 +433,32 @@ class LifecycleManager:
             response = requests.get(
                 url,
                 headers=self.token_generator.headers,
-                params={"status": "queued"},
+                params={"status": status},
                 timeout=30.0,
             )
 
             if response.status_code == 200:
                 runs = response.json()
-                queued_runs = runs.get("workflow_runs", [])
+                workflow_runs = runs.get("workflow_runs", [])
 
                 # Filtrar runs que podrían necesitar self-hosted
-                queued_jobs = 0
-                for run in queued_runs:
-                    # Nota: GitHub API no siempre especifica runner type en queued runs
+                job_count = 0
+                for run in workflow_runs:
                     # Asumimos que si el repo usa self-hosted, estos jobs lo necesitan
-                    queued_jobs += 1
+                    job_count += 1
 
-                return queued_jobs
+                return job_count
 
             return 0
 
         except Exception as e:
-            logger.error(f"Error verificando jobs para {repo}: {e}")
+            logger.error(f"Error verificando workflows con status '{status}' para {repo}: {e}")
             return 0
 
-    def get_active_runners_for_repo(self, repo: str) -> int:
-        """Cuenta runners activos para un repositorio específico."""
-        try:
-            active_count = 0
-            runners_to_remove = []
+    def get_active_workflows_for_repo(self, repo: str) -> int:
+        """Verifica workflows en ejecución para un repositorio."""
+        return self._get_workflow_runs_by_status(repo, "in_progress")
 
-            for runner_id, container in self.active_runners.items():
-                # Verificar si este runner pertenece al repo
-                # Los runners tienen labels o environment variables que indican el repo
-                try:
-                    container.reload()  # Actualizar estado del contenedor
-                    if container.status == "running":
-                        # Obtener labels del contenedor
-                        labels = container.labels
-                        if labels.get("repo") == repo or labels.get("scope_name") == repo:
-                            active_count += 1
-                except:
-                    # Contenedor ya no existe, marcar para remover
-                    runners_to_remove.append(runner_id)
-
-            # Remover runners que ya no existen (fuera del bucle)
-            for runner_id in runners_to_remove:
-                del self.active_runners[runner_id]
-
-            return active_count
-
-        except Exception as e:
-            logger.error(f"Error contando runners para {repo}: {e}")
-            return 0
+    def get_queued_jobs_for_repo(self, repo: str) -> int:
+        """Verifica jobs en cola para un repositorio."""
+        return self._get_workflow_runs_by_status(repo, "queued")
