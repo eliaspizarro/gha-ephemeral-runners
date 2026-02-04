@@ -1,0 +1,23 @@
+# Configuración de fin de línea para consistencia
+* text=auto
+
+# Archivos que siempre deben tener fin de línea Unix
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.go text eol=lf
+*.Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Archivos binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+
+# Archivos que siempre deben tener fin de línea Windows (si es necesario)
+*.bat text eol=crlf
+*.cmd text eol=crlf
