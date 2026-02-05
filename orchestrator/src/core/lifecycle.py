@@ -9,9 +9,9 @@ import requests
 from src.core.container import ContainerManager
 from src.services.docker import DockerUtils
 from src.services.tokens import TokenGenerator
-from src.utils.helpers import format_log
+from src.utils.helpers import format_log, setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 def handle_lifecycle_errors(func):
@@ -51,6 +51,7 @@ class LifecycleManager:
         runner_name: Optional[str] = None,
         runner_group: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        enable_dind: bool = False,
     ) -> str:
         """Crea un runner efímero."""
         logger.info(f"🚀 Creando runner para {scope}/{scope_name}")
@@ -63,9 +64,11 @@ class LifecycleManager:
             runner_name=runner_name,
             runner_group=runner_group,
             labels=labels,
+            enable_dind=enable_dind,
         )
 
-        runner_id = DockerUtils.get_container_labels(container).get("runner-name", container.id[:12])
+        labels = DockerUtils.get_container_labels(container)
+        runner_id = labels.get("runner-name", container.id[:12]) if labels else container.id[:12]
         self.active_runners[runner_id] = container
         container_id = DockerUtils.format_container_id(container.id)
         logger.info(f"✅ Runner creado: {runner_id} (container: {container_id})")
@@ -127,8 +130,15 @@ class LifecycleManager:
     def list_active_runners(self) -> List[Dict]:
         """Lista todos los runners activos."""
         containers = self.container_manager.get_runner_containers()
-        return [self.get_runner_status(DockerUtils.get_container_labels(container).get("runner-name", container.id[:12])) 
-                for container in containers]
+        runner_statuses = []
+        for container in containers:
+            labels = DockerUtils.get_container_labels(container)
+            if isinstance(labels, dict):
+                runner_id = labels.get("runner-name", container.id[:12])
+            else:
+                runner_id = container.id[:12]
+            runner_statuses.append(self.get_runner_status(runner_id))
+        return runner_statuses
 
     @handle_lifecycle_errors
     def cleanup_inactive_runners(self) -> int:
@@ -148,9 +158,10 @@ class LifecycleManager:
                     continue
                 
                 labels = DockerUtils.get_container_labels(container)
-                repo = labels.get("repo")
-                if repo and self.get_active_workflows_for_repo(repo) == 0:
-                    runners_to_remove.append(runner_id)
+                if isinstance(labels, dict):
+                    repo = labels.get("repo")
+                    if repo and self.get_active_workflows_for_repo(repo) == 0:
+                        runners_to_remove.append(runner_id)
                         
             except Exception as e:
                 logger.error(f"❌ Error analizando runner {runner_id}: {e}")
@@ -200,7 +211,6 @@ class LifecycleManager:
         
         while self.monitoring:
             try:
-                # 🔒 BLOQUEO ATÓMICO - Eliminar race conditions
                 with self.runner_lock:
                     self.cleanup_inactive_runners()
                     self.check_and_create_runners_for_jobs()
@@ -236,6 +246,14 @@ class LifecycleManager:
                 if self.repo_uses_self_hosted_runners(repo):
                     repos_with_runners += 1
                     
+                    # Detectar si necesita Docker-in-Docker
+                    needs_dind = self.repo_needs_docker_in_docker(repo)
+                    
+                    if needs_dind:
+                        logger.info(f"🐳 {repo}: Detectado Docker-in-Docker")
+                    else:
+                        logger.info(f"🏃 {repo}: Runner estándar")
+                    
                     queued_jobs = self.get_queued_jobs_for_repo(repo)
 
                     if queued_jobs > 0:
@@ -255,7 +273,7 @@ class LifecycleManager:
                                 runner_name = f"auto-runner-{int(time.time())}-{i}"
                                 try:
                                     runner_id = self.create_runner(
-                                        scope="repo", scope_name=repo, runner_name=runner_name
+                                        scope="repo", scope_name=repo, runner_name=runner_name, enable_dind=needs_dind
                                     )
                                     runners_created += 1
                                 except Exception as e:
@@ -274,9 +292,16 @@ class LifecycleManager:
                 return False
             
             labels = DockerUtils.get_container_labels(container)
-            return labels.get("repo") == repo or labels.get("scope_name") == repo
+            if isinstance(labels, dict):
+                return labels.get("repo") == repo or labels.get("scope_name") == repo
+            return False
         except:
-            self.active_runners.pop(DockerUtils.get_container_labels(container).get("runner-name", container.id[:12]), None)
+            labels = DockerUtils.get_container_labels(container)
+            if isinstance(labels, dict):
+                runner_id = labels.get("runner-name", container.id[:12])
+            else:
+                runner_id = container.id[:12]
+            self.active_runners.pop(runner_id, None)
             return False
 
     def get_runner_detailed_info(self, runner_name: str) -> Dict:
@@ -341,7 +366,40 @@ class LifecycleManager:
 
     def get_organization_repositories(self) -> List[str]:
         """Obtiene todos los repositorios de la organización."""
-        return self._get_user_repositories()  # Misma lógica para ambos casos
+        try:
+            org_name = os.getenv("GITHUB_ORGANIZATION")
+            if not org_name:
+                logger.warning("⚠️ GITHUB_ORGANIZATION no configurado, usando repositorios personales")
+                return self._get_user_repositories()
+            
+            repos = []
+            page = 1
+            per_page = 100
+            
+            while True:
+                url = f"{self.token_generator.api_base}/orgs/{org_name}/repos"
+                response = requests.get(
+                    url,
+                    headers=self.token_generator.headers,
+                    params={"type": "all", "page": page, "per_page": per_page},
+                    timeout=30.0
+                )
+                
+                if response.status_code != 200:
+                    break
+                
+                data = response.json()
+                if not data:
+                    break
+                
+                repos.extend([f"{repo['owner']['login']}/{repo['name']}" for repo in data])
+                page += 1
+            
+            logger.info(f"📁 Encontrados {len(repos)} repositorios de organización")
+            return repos
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo repositorios de organización: {e}")
+            return []
 
     def repo_uses_self_hosted_runners(self, repo: str) -> bool:
         """Verifica si un repositorio usa self-hosted runners."""
@@ -376,6 +434,45 @@ class LifecycleManager:
 
         except Exception as e:
             logger.debug(f"Error verificando workflow de {repo}: {e}")
+            return False
+
+    def repo_needs_docker_in_docker(self, repo: str) -> bool:
+        """Verifica si un repositorio necesita Docker-in-Docker."""
+        try:
+            owner, name = repo.split("/")
+            url = f"{self.token_generator.api_base}/repos/{owner}/{name}/contents/.github/workflows"
+            response = requests.get(url, headers=self.token_generator.headers, timeout=30.0)
+            
+            if response.status_code != 200:
+                return False
+                
+            workflows = response.json()
+            for workflow in workflows:
+                if workflow.get("name", "").endswith((".yml", ".yaml")):
+                    workflow_url = workflow.get("download_url")
+                    if workflow_url:
+                        workflow_response = requests.get(
+                            workflow_url, headers=self.token_generator.headers, timeout=30.0
+                        )
+                        
+                        if workflow_response.status_code == 200:
+                            content = workflow_response.text
+                            if any(pattern in content for pattern in [
+                                "docker/setup-buildx-action@",
+                                "docker/login-action@",
+                                "docker/build-push-action@",
+                                "docker run ",
+                                "docker build ",
+                                "docker push ",
+                                "docker pull ",
+                                "docker login ",
+                                "docker logout "
+                            ]):
+                                logger.debug(f"Repo {repo} necesita Docker-in-Docker")
+                                return True
+            return False
+        except Exception as e:
+            logger.debug(f"Error verificando Docker en workflow de {repo}: {e}")
             return False
 
     def get_active_workflows_for_repo(self, repo: str) -> int:

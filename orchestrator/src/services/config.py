@@ -3,9 +3,9 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
-from src.utils.helpers import format_log
+from src.utils.helpers import format_log, setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class ConfigValidator:

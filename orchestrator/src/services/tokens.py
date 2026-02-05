@@ -2,8 +2,9 @@ import logging
 from typing import Optional
 
 import requests
+from src.utils.helpers import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class TokenGenerator:

@@ -101,11 +101,6 @@ def get_env_var(key: str, default: str = None, required: bool = False) -> str:
 
 # ===== UTILIDADES DE CONTENEDORES =====
 
-def format_container_id(container_id: str) -> str:
-    """Formatea ID de contenedor a 12 caracteres."""
-    return container_id[:12] if container_id else "unknown"
-
-
 def validate_runner_name(runner_name: str) -> str:
     """Valida y normaliza nombre de runner."""
     if not runner_name:

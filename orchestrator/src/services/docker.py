@@ -4,10 +4,11 @@ Centraliza operaciones comunes con contenedores.
 """
 
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 import docker
-from src.utils.helpers import DockerError, ErrorHandler, format_container_id, setup_logger
+from src.utils.helpers import DockerError, ErrorHandler, setup_logger
 
 logger = setup_logger(__name__)
 
@@ -35,7 +36,7 @@ class DockerUtils:
             container.reload()  # Actualizar estado
 
             return {
-                "id": format_container_id(container.id),
+                "id": self.format_container_id(container.id),
                 "name": container.name,
                 "status": container.status,
                 "image": container.image.tags[0] if container.image.tags else "unknown",
@@ -48,9 +49,9 @@ class DockerUtils:
                 "state": container.attrs.get("State", {}),
             }
         except Exception as e:
-            container_id = format_container_id(container.id)
+            container_id = self.format_container_id(container.id)
             logger.error(f"Error obteniendo información del contenedor {container_id}: {e}")
-            return {"id": format_container_id(container.id), "status": "error", "error": str(e)}
+            return {"id": self.format_container_id(container.id), "status": "error", "error": str(e)}
 
     @staticmethod
     def is_container_running(container: Any) -> bool:
@@ -82,7 +83,8 @@ class DockerUtils:
         """
         try:
             container.reload()
-            return container.labels or {}
+            labels = container.labels
+            return labels if isinstance(labels, dict) else {}
         except Exception:
             return {}
 
@@ -203,8 +205,6 @@ class DockerUtils:
         Returns:
             True si el contenedor está listo, False si timeout
         """
-        import time
-
         start_time = time.time()
 
         while time.time() - start_time < timeout:

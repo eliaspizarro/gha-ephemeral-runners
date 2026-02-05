@@ -11,14 +11,14 @@ from fastapi import FastAPI, HTTPException
 
 from src.api.models import *
 from src.core.orchestrator import OrchestratorService
-from src.utils.helpers import ErrorHandler, setup_logging_config, format_log
+from src.utils.helpers import ErrorHandler, format_log, setup_logger, setup_logging_config
 from version import __version__
 
 # Configurar logging ANTES de inicializar el servicio
 setup_logging_config()
 
 # Configuración de logging
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 # Inicialización del servicio de negocio
 logger.info(format_log('START', 'Orchestrator Service'))

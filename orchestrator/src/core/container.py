@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 import docker
 from src.services.docker import DockerError, DockerUtils
 from src.services.environment import EnvironmentManager
-from src.utils.helpers import ErrorHandler, format_container_id, validate_runner_name
+from src.utils.helpers import ErrorHandler, setup_logger, validate_runner_name
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class ContainerManager:
@@ -26,6 +26,7 @@ class ContainerManager:
         runner_name: Optional[str] = None,
         runner_group: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        enable_dind: bool = False,
     ) -> Any:
         """Crea un contenedor Docker para un runner efímero."""
         if not runner_name:
@@ -50,6 +51,15 @@ class ContainerManager:
             runner_name=runner_name, scope=scope, scope_name=scope_name
         )
 
+        # Configurar Docker-in-Docker si es necesario
+        volumes = {}
+        security_opt = []
+        
+        if enable_dind:
+            volumes['/var/run/docker.sock'] = {'bind': '/var/run/docker.sock', 'mode': 'rw'}
+            security_opt.append('label:disable')
+            logger.info(f"🐳 Habilitando Docker-in-Docker para {runner_name}")
+
         logger.info(f"🐳 Creando contenedor {container_name} con imagen {self.runner_image}")
         
         container = self.client.containers.run(
@@ -58,6 +68,8 @@ class ContainerManager:
             environment=environment,
             detach=True,
             labels=container_labels,
+            volumes=volumes if volumes else None,
+            security_opt=security_opt if security_opt else None,
         )
 
         logger.info(f"✅ Contenedor creado: {DockerUtils.format_container_id(container.id)}")
@@ -65,7 +77,6 @@ class ContainerManager:
         # Esperar a que el contenedor esté completamente iniciado
         if DockerUtils.wait_for_container(container, timeout=30):
             # Esperar 10 segundos para que el runner genere más logs de configuración
-            import time
             time.sleep(10)
             self.log_container_output(container, runner_name)
         else:
@@ -135,14 +146,6 @@ class ContainerManager:
             print(f"❌ Error obteniendo logs del contenedor {runner_name}: {e}")
 
     
-    def get_container_info(self, container: Any) -> Dict[str, Any]:
-        """Obtiene información completa de un contenedor usando DockerUtils."""
-        return DockerUtils.get_container_info(container)
-
-    def is_container_running(self, container: Any) -> bool:
-        """Verifica si un contenedor está en ejecución usando DockerUtils."""
-        return DockerUtils.is_container_running(container)
-
     def get_container_by_name(self, name: str) -> Any:
         """Obtiene un contenedor por su nombre."""
         try:

@@ -2,9 +2,9 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from src.utils.helpers import PlaceholderResolver
+from src.utils.helpers import PlaceholderResolver, setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class EnvironmentManager:

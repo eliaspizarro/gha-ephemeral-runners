@@ -14,6 +14,7 @@ class RunnerRequest(BaseModel):
     runner_name: Optional[str] = None
     runner_group: Optional[str] = None
     labels: Optional[List[str]] = None
+    enable_dind: bool = False
     count: int = 1
 
 

@@ -148,6 +148,7 @@ class OrchestratorService:
                     runner_name=runner_name,
                     runner_group=request.runner_group,
                     labels=request.labels,
+                    enable_dind=request.enable_dind,
                 )
                 
                 runners.append(
