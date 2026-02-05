@@ -7,6 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import docker
+from docker.errors import DockerException
 from src.utils.helpers import DockerError, ErrorHandler, format_container_id, setup_logger
 
 logger = setup_logger(__name__)
@@ -14,6 +15,11 @@ logger = setup_logger(__name__)
 
 class DockerUtils:
     """Utilitarios centralizados para operaciones Docker."""
+
+    @staticmethod
+    def format_container_id(container_id: str) -> str:
+        """Formatea ID de contenedor a 12 caracteres."""
+        return container_id[:12] if container_id else "unknown"
 
     @staticmethod
     def safe_container_operation(
@@ -215,26 +221,7 @@ class DockerUtils:
 
         return clean_name
 
-    @staticmethod
-    def get_container_logs(container: Any, tail: int = 100) -> str:
-        """
-        Obtiene logs de un contenedor.
-
-        Args:
-            container: Contenedor Docker
-            tail: Número de líneas a obtener
-
-        Returns:
-            Logs del contenedor
-        """
-        try:
-            logs = container.logs(tail=tail, timestamps=True)
-            return logs.decode("utf-8") if isinstance(logs, bytes) else str(logs)
-        except Exception as e:
-            container_id = format_container_id(container.id)
-            logger.error(f"Error obteniendo logs del contenedor {container_id}: {e}")
-            return f"Error obteniendo logs: {str(e)}"
-
+    
     @staticmethod
     def wait_for_container(
         container: Any, timeout: int = 30, check_interval: int = 1

@@ -80,6 +80,17 @@ class ContainerManager:
         
         return container
 
+    def get_runner_container(self, runner_name: str) -> Any:
+        """Obtiene un contenedor específico por nombre de runner."""
+        try:
+            containers = self.client.containers.list(
+                all=False, filters={"label": f"runner-name={runner_name}"}
+            )
+            return containers[0] if containers else None
+        except Exception as e:
+            logger.error(f"Error obteniendo contenedor {runner_name}: {e}")
+            return None
+
     def get_runner_containers(self) -> List[Any]:
         """Obtiene todos los contenedores de runners efímeros activos."""
         try:
@@ -105,7 +116,7 @@ class ContainerManager:
         """Obtiene logs de un contenedor usando safe_container_operation."""
         try:
             return DockerUtils.safe_container_operation(
-                "obtener logs", container, container.logs, tail=tail, timestamps=True
+                "obtener logs", container, lambda c: c.logs(tail=tail)
             )
         except DockerError:
             return "Error obteniendo logs"

@@ -7,6 +7,7 @@ from functools import wraps
 
 import requests
 from src.core.container import ContainerManager
+from src.services.docker import DockerUtils
 from src.services.tokens import TokenGenerator
 from src.utils.helpers import format_log
 
@@ -282,7 +283,7 @@ class LifecycleManager:
     def get_runner_detailed_info(self, runner_name: str) -> Dict:
         """Obtiene información detallada de un runner usando DockerUtils."""
         try:
-            container = self.get_runner_container(runner_name)
+            container = self.container_manager.get_runner_container(runner_name)
             if container:
                 return DockerUtils.get_container_info(container)
             return {}
@@ -293,7 +294,7 @@ class LifecycleManager:
     def debug_runner_environment(self, runner_name: str) -> Dict:
         """Obtiene variables de entorno de un runner para debugging."""
         try:
-            container = self.get_runner_container(runner_name)
+            container = self.container_manager.get_runner_container(runner_name)
             if container:
                 return DockerUtils.get_container_environment(container)
             return {}

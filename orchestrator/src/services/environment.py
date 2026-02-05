@@ -179,7 +179,7 @@ class EnvironmentManager:
                     invalid_placeholders.extend(result["invalid_placeholders"])
 
             # Determinar compatibilidad con imagen
-            image_compatible = self._check_image_compatibility(raw_env)
+            image_compatible = self.is_image_compatible(raw_env)
 
             return {
                 "valid": len(invalid_placeholders) == 0,
