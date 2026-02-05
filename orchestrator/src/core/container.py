@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -11,15 +10,6 @@ from src.services.environment import EnvironmentManager
 from src.utils.helpers import ErrorHandler, format_container_id, validate_runner_name
 
 logger = logging.getLogger(__name__)
-
-# Patrones comunes de timestamp
-TIMESTAMP_PATTERNS = [
-    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s*',      # ISO 8601 nano
-    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s*',           # ISO 8601 simple
-    r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s*',             # YYYY-MM-DD HH:MM:SS
-    r'\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s*',         # [timestamp]
-    r'\[\d+\]\s*',                                          # [unix]
-]
 
 
 class ContainerManager:
@@ -74,6 +64,9 @@ class ContainerManager:
         
         # Esperar a que el contenedor esté completamente iniciado
         if DockerUtils.wait_for_container(container, timeout=30):
+            # Esperar 10 segundos para que el runner genere más logs de configuración
+            import time
+            time.sleep(10)
             self.log_container_output(container, runner_name)
         else:
             logger.error(f"❌ Runner {runner_name} falló al iniciar correctamente")
@@ -113,61 +106,35 @@ class ContainerManager:
             return False
 
     def get_container_logs(self, container: Any, tail: int = 50) -> str:
-        """Obtiene logs de un contenedor usando safe_container_operation."""
+        """Obtiene logs de un contenedor directamente."""
         try:
-            return DockerUtils.safe_container_operation(
-                "obtener logs", container, lambda c: c.logs(tail=tail)
-            )
-        except DockerError:
-            return "Error obteniendo logs"
+            logs = container.logs(tail=tail)
+            if isinstance(logs, bytes):
+                return logs.decode("utf-8", errors="replace")
+            else:
+                return str(logs)
         except Exception as e:
-            return f"Error inesperado: {str(e)}"
+            logger.error(f"Error obteniendo logs del contenedor: {e}")
+            return f"Error obteniendo logs: {str(e)}"
 
     def log_container_output(self, container: Any, runner_name: str) -> None:
-        """Muestra logs del contenedor con detección simple de timestamps."""
+        """Muestra logs del contenedor sin filtrar (salida raw)."""
         try:
             print(f"📋 Salida del Runner: {runner_name}")
             print("")
             
-            logs = self.get_container_logs(container, tail=50)
+            logs = self.get_container_logs(container, tail=200)
             if logs and logs != "Error obteniendo logs":
-                # Detectar patrón dominante en primeras 10 líneas
-                dominant_pattern = self._detect_timestamp_pattern(logs)
-                
                 for line in logs.split("\n"):
                     if line.strip():
-                        clean_line = self._clean_timestamp(line.strip(), dominant_pattern)
-                        print(f"  {runner_name} | {clean_line}")
+                        print(f"  {runner_name} | {line.strip()}")
             
             print("")
             
         except Exception as e:
             print(f"❌ Error obteniendo logs del contenedor {runner_name}: {e}")
 
-    def _detect_timestamp_pattern(self, logs: str) -> Optional[str]:
-        """Detecta el patrón de timestamp más común."""
-        pattern_counts = {}
-        
-        # Analizar primeras 10 líneas
-        for line in logs.split('\n')[:10]:
-            for i, pattern in enumerate(TIMESTAMP_PATTERNS):
-                if re.match(pattern, line.strip()):
-                    pattern_counts[i] = pattern_counts.get(i, 0) + 1
-        
-        # Retornar patrón más frecuente (si aparece 3+ veces)
-        if pattern_counts:
-            dominant = max(pattern_counts.items(), key=lambda x: x[1])
-            if dominant[1] >= 3:  # Umbral simple
-                return TIMESTAMP_PATTERNS[dominant[0]]
-        
-        return None
-
-    def _clean_timestamp(self, line: str, pattern: Optional[str]) -> str:
-        """Elimina timestamp si el patrón coincide."""
-        if pattern and re.match(pattern, line):
-            return re.sub(pattern, '', line)
-        return line
-
+    
     def get_container_info(self, container: Any) -> Dict[str, Any]:
         """Obtiene información completa de un contenedor usando DockerUtils."""
         return DockerUtils.get_container_info(container)

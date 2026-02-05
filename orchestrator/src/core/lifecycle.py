@@ -31,6 +31,7 @@ class LifecycleManager:
         self.token_generator = TokenGenerator(github_runner_token)
         self.container_manager = ContainerManager(runner_image)
         self.active_runners: Dict[str, Any] = {}
+        self.runner_lock = threading.Lock()  # ← Bloqueo atómico para race conditions
         self.monitoring = False
         self.monitor_thread: Optional[threading.Thread] = None
 
@@ -203,8 +204,10 @@ class LifecycleManager:
                 cycle_count += 1
                 logger.info(format_log('MONITOR', f'Ciclo {cycle_count}'))
                 
-                self.cleanup_inactive_runners()
-                self.check_and_create_runners_for_jobs()
+                # 🔒 BLOQUEO ATÓMICO - Eliminar race conditions
+                with self.runner_lock:
+                    self.cleanup_inactive_runners()
+                    self.check_and_create_runners_for_jobs()
                 
                 active_count = len(self.active_runners)
                 logger.info(format_log('INFO', f'Estado: {active_count} runners activos'))

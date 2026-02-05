@@ -7,7 +7,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import docker
-from docker.errors import DockerException
 from src.utils.helpers import DockerError, ErrorHandler, format_container_id, setup_logger
 
 logger = setup_logger(__name__)
@@ -20,39 +19,6 @@ class DockerUtils:
     def format_container_id(container_id: str) -> str:
         """Formatea ID de contenedor a 12 caracteres."""
         return container_id[:12] if container_id else "unknown"
-
-    @staticmethod
-    def safe_container_operation(
-        operation: str, container: Any, operation_func, *args, **kwargs
-    ) -> Any:
-        """
-        Ejecuta operación segura en contenedor con manejo de errores.
-
-        Args:
-            operation: Descripción de la operación
-            container: Contenedor Docker
-            operation_func: Función a ejecutar
-            *args: Argumentos para la función
-            **kwargs: Argumentos clave para la función
-
-        Returns:
-            Resultado de la operación
-
-        Raises:
-            DockerError: Si falla la operación
-        """
-        try:
-            return operation_func(container, *args, **kwargs)
-        except DockerException as e:
-            container_id = format_container_id(container.id)
-            error_msg = f"Error en {operation} para contenedor {container_id}: {str(e)}"
-            logger.error(error_msg)
-            raise DockerError(error_msg)
-        except Exception as e:
-            container_id = format_container_id(container.id)
-            error_msg = f"Error inesperado en {operation} para contenedor {container_id}: {str(e)}"
-            logger.error(error_msg)
-            raise DockerError(error_msg)
 
     @staticmethod
     def get_container_info(container: Any) -> Dict[str, Any]:
