@@ -198,12 +198,8 @@ class LifecycleManager:
         
         logger.info(format_log('MONITOR', 'Iniciando sistema automático', f'limpieza={purge_interval}s, creación={cleanup_interval}s'))
         
-        cycle_count = 0
         while self.monitoring:
             try:
-                cycle_count += 1
-                logger.info(format_log('MONITOR', f'Ciclo {cycle_count}'))
-                
                 # 🔒 BLOQUEO ATÓMICO - Eliminar race conditions
                 with self.runner_lock:
                     self.cleanup_inactive_runners()
@@ -217,7 +213,7 @@ class LifecycleManager:
                 time.sleep(sleep_time)
                 
             except Exception as e:
-                logger.error(format_log('ERROR', f'Error en ciclo {cycle_count}', str(e)))
+                logger.error(format_log('ERROR', f'Error en ciclo de monitoreo', str(e)))
                 logger.info(format_log('INFO', 'Esperando 60s antes de reintentar'))
                 time.sleep(60)
 
