@@ -100,6 +100,41 @@ gha-ephemeral-runners/
 - `AUTO_CREATE_RUNNERS`: Activar creación automática (true/false, default: false)
 - `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 60)
 
+### Variables de Entorno para Runners
+Las variables con prefijo `runnerenv_` se pasan automáticamente a los contenedores de runners:
+
+```bash
+# Variables básicas (ejemplo para myoung34/github-runner)
+runnerenv_REPO_URL=https://github.com/{scope_name}
+runnerenv_RUNNER_TOKEN={registration_token}
+runnerenv_RUNNER_NAME={runner_name}
+runnerenv_RUNNER_WORKDIR=/tmp/github-runner-{repo_owner}-{repo_name}
+runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
+```
+
+#### Placeholders Disponibles
+- `{scope_name}`: Nombre del repositorio/organización
+- `{runner_name}`: Nombre único del runner
+- `{registration_token}`: Token de registro
+- `{repo_owner}`, `{repo_name}`: Componentes del repositorio
+- `{timestamp}`, `{hostname}`, `{orchestrator_id}`: Sistema y tiempo
+
+## Filtrado de Output para Runners
+La variable `FILTER_PATTERN` (del orquestador) permite filtrar mensajes no deseados del output del runner usando patrones Extended Regular Expressions (egrep -v -E) ([ver especificación](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap09.html#tag_09_04)):
+
+```bash
+# Un patrón específico
+FILTER_PATTERN=WARNING: Running pip as the.*root.*user
+
+# Múltiples patrones (separados por |)
+FILTER_PATTERN=WARNING.*pip.*root|DEBUG:|TRACE:
+
+# Sin filtrado (comportamiento normal)
+# FILTER_PATTERN=
+```
+
+**Nota**: Variable del orquestador, no se pasa al runner.
+
 ## 🌐 Requisitos de Infraestructura
 
 - **Puertos**: API Gateway (8080), Orchestrator (8000) - solo internos
