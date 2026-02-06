@@ -327,7 +327,7 @@ RUNNER_COMMAND=bash -c "d=/tmp/h/ensurepip;mkdir -p $$d;printf '__all__=[\"boots
 ```
 
 ### Orden de Ejecución
-**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD.**
+**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD del Dockerbuild.**
 
 ```mermaid
 %%{init: {
