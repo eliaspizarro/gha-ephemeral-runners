@@ -59,6 +59,28 @@ gha-ephemeral-runners/
 └── README.md                  # Documentación
 ```
 
+## 🔑 Token de GitHub (Requerido)
+
+### Scopes Requeridos
+
+- **`repo`** - Acceso completo a repositorios
+- **`admin:org`** - Administración de organización
+- **`workflow`** - Ejecutar workflows de GitHub Actions
+
+### Creación del Token
+
+1. **Ve a GitHub Settings** → Developer settings → Personal access tokens → Tokens (classic)
+2. **Generate New Token** → Note: "GHA Ephemeral Runners"
+3. **Seleccionar Scopes**: `repo`, `admin:org`, `workflow`
+4. **Generate y Copiar** el token inmediatamente
+
+### Configuración
+
+```bash
+# En deploy/.env
+GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
+```
+
 ## 🚀 Inicio Rápido
 
 ### Modo Automático
@@ -138,23 +160,6 @@ runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
 - `{repo_owner}`, `{repo_name}`: Componentes del repositorio
 - `{timestamp}`, `{hostname}`, `{orchestrator_id}`: Sistema y tiempo
 
-## 🔧 Comando Personalizado para Runners
-La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
-
-```bash
-# Ejemplo para filtrar warning de pip en actions/setup-python
-RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | sed '/WARNING: Running pip as the.*root.*user/d' || true"
-```
-
-### Orden de Ejecución
-**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND después:**
-
-1. **entrypoint.sh** → Configura y registra el runner
-2. **RUNNER_COMMAND** → Se ejecuta con control total del proceso
-3. **GitHub Actions** → Se ejecuta dentro de nuestro comando
-
-**Nota**: Variable del orquestador que reemplaza directamente el CMD del contenedor con el comando especificado, permitiendo cualquier tipo de modificación o comportamiento personalizado.
-
 ## 🌐 Requisitos de Infraestructura
 
 - **Puertos**: API Gateway (8080 expuesto), Orchestrator (8000 interno) - API Gateway accesible desde host, Orchestrator solo en red interna
@@ -213,43 +218,6 @@ REGISTRY=myreg.com IMAGE_VERSION=1.2.0 ./build.sh
 # Crear release
 git tag v1.2.0
 git push origin v1.2.0
-```
-
-## 📊 Logging Estandarizado
-
-### Sistema de Categorías
-
-El sistema usa categorías con emojis para consistencia en toda la arquitectura:
-
-```python
-LOG_CATEGORIES = {
-    'START': '🚀 INICIO',
-    'CONFIG': '⚙️ CONFIG', 
-    'MONITOR': '🔄 MONITOREO',
-    'SUCCESS': '✅ ÉXITO',
-    'ERROR': '❌ ERROR',
-    'WARNING': '⚠️ ADVERTENCIA',
-    'INFO': '📋 INFO',
-    'REQUEST': '🌐 REQUEST',
-    'RESPONSE': '📤 RESPONSE',
-    'HEALTH': '💚 HEALTH',
-    'SHUTDOWN': '🛑 SHUTDOWN'
-}
-```
-
-### Middleware Optimizado
-
-- **Health checks internos**: Sin logs REQUEST/RESPONSE para reducir ruido
-- **Solicitudes externas**: Logging completo con formato estandarizado
-- **Consistencia**: Mismo formato en API Gateway y Orchestrator
-
-**Ejemplos de logs:**
-```
-🚀 INICIO API Gateway Service
-⚙️ CONFIG Orquestador configurado: http://orchestrator:8000
-🌐 REQUEST Solicitud recibida: POST http://localhost:8080/api/v1/runners - IP: 192.168.1.100
-📤 RESPONSE Respuesta enviada: Status: 201 - Duración: 0.245s
-💚 HEALTH Gateway funcionando correctamente
 ```
 
 ## 🌐 Configuración de Redes y Proxy
@@ -350,26 +318,58 @@ jobs:
           # tus comandos de build/test
 ```
 
-## 🔑 Token de GitHub
-
-### Scopes Requeridos
-
-- **`repo`** - Acceso completo a repositorios
-- **`admin:org`** - Administración de organización
-- **`workflow`** - Ejecutar workflows de GitHub Actions
-
-### Creación del Token
-
-1. **Ve a GitHub Settings** → Developer settings → Personal access tokens → Tokens (classic)
-2. **Generate New Token** → Note: "GHA Ephemeral Runners"
-3. **Seleccionar Scopes**: `repo`, `admin:org`, `workflow`
-4. **Generate y Copiar** el token inmediatamente
-
-### Configuración
+## 🔧 Comando Personalizado para Runners
+La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
-# En deploy/.env
-GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
+# Ejemplo para filtrar warning de pip en actions/setup-python
+RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | sed '/WARNING: Running pip as the.*root.*user/d' || true"
+```
+
+### Orden de Ejecución
+**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND después:**
+
+1. **entrypoint.sh** → Configura y registra el runner
+2. **RUNNER_COMMAND** → Se ejecuta con control total del proceso
+3. **GitHub Actions** → Se ejecuta dentro de nuestro comando
+
+**Nota**: Variable del orquestador que reemplaza directamente el CMD del contenedor con el comando especificado, permitiendo cualquier tipo de modificación o comportamiento personalizado.
+
+## 📊 Logging Estandarizado
+
+### Sistema de Categorías
+
+El sistema usa categorías con emojis para consistencia en toda la arquitectura:
+
+```python
+LOG_CATEGORIES = {
+    'START': '🚀 INICIO',
+    'CONFIG': '⚙️ CONFIG', 
+    'MONITOR': '🔄 MONITOREO',
+    'SUCCESS': '✅ ÉXITO',
+    'ERROR': '❌ ERROR',
+    'WARNING': '⚠️ ADVERTENCIA',
+    'INFO': '📋 INFO',
+    'REQUEST': '🌐 REQUEST',
+    'RESPONSE': '📤 RESPONSE',
+    'HEALTH': '💚 HEALTH',
+    'SHUTDOWN': '🛑 SHUTDOWN'
+}
+```
+
+### Middleware Optimizado
+
+- **Health checks internos**: Sin logs REQUEST/RESPONSE para reducir ruido
+- **Solicitudes externas**: Logging completo con formato estandarizado
+- **Consistencia**: Mismo formato en API Gateway y Orchestrator
+
+**Ejemplos de logs:**
+```
+🚀 INICIO API Gateway Service
+⚙️ CONFIG Orquestador configurado: http://orchestrator:8000
+🌐 REQUEST Solicitud recibida: POST http://localhost:8080/api/v1/runners - IP: 192.168.1.100
+📤 RESPONSE Respuesta enviada: Status: 201 - Duración: 0.245s
+💚 HEALTH Gateway funcionando correctamente
 ```
 
 ## 🤖 Modo Automático: Descubrimiento Inteligente
