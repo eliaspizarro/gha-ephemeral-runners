@@ -123,9 +123,16 @@ runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
 La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
-# Ejemplo de comando personalizado como workaround de actions/setup-python@v6
-RUNNER_COMMAND=sh -c "exec 2> >(sed \"/WARNING: Running pip as the.*root.*user/d\" >&2)"
+# Ejemplo para filtrar warning de pip en actions/setup-python
+RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | sed '/WARNING: Running pip as the.*root.*user/d' || true"
 ```
+
+### 🐳 Orden de Ejecución
+**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND después:**
+
+1. **entrypoint.sh** → Configura y registra el runner
+2. **RUNNER_COMMAND** → Se ejecuta con control total del proceso
+3. **GitHub Actions** → Se ejecuta dentro de nuestro comando
 
 **Nota**: Variable del orquestador que reemplaza directamente el CMD del contenedor con el comando especificado, permitiendo cualquier tipo de modificación o comportamiento personalizado.
 
@@ -136,22 +143,21 @@ RUNNER_COMMAND=sh -c "exec 2> >(sed \"/WARNING: Running pip as the.*root.*user/d
 - **NAT**: Puede operar detrás de NAT sin puertos publicados
 - **Docker**: Engine 20.10+ con soporte para redes overlay
 
-### 🎯 Single Source of Truth
+### 🏷️ Gestión de Versiones
 
 Cada servicio tiene su propio archivo `version.py` como fuente primaria de verdad:
 
 ```python
 # api-gateway/version.py
-"""API Gateway Version Management - Single Source of Truth."""
+"""API Gateway Version Management"""
 __version__ = "1.1.0"
 
 # orchestrator/version.py  
-"""Orchestrator Version Management - Single Source of Truth."""
+"""Orchestrator Version Management""
 __version__ = "1.1.0"
 ```
 
-### 🔄 Actualización Automática
-
+**Actualización automática:**
 ```bash
 # Actualizar todos los servicios a la vez
 python scripts/update-version.py 1.2.0

@@ -1,3 +1,3 @@
-"""Orchestrator Version Management - Single Source of Truth."""
+"""Orchestrator Version Management"""
 
 __version__ = "1.1.0"

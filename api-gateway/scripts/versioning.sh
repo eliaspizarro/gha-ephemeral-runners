@@ -34,7 +34,7 @@ fi
 
 # Actualizar version.py
 cat > "$VERSION_FILE" << EOF
-"""API Gateway Version Management - Single Source of Truth."""
+"""API Gateway Version Management"""
 
 __version__ = "$IMAGE_VERSION"
 EOF

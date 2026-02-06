@@ -34,7 +34,7 @@ fi
 
 # Actualizar version.py
 cat > "$VERSION_FILE" << EOF
-"""Orchestrator Version Management - Single Source of Truth."""
+"""Orchestrator Version Management"""
 
 __version__ = "$IMAGE_VERSION"
 EOF

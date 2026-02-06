@@ -1,3 +1,3 @@
-"""API Gateway Version Management - Single Source of Truth."""
+"""API Gateway Version Management"""
 
 __version__ = "1.1.0"
