@@ -60,7 +60,7 @@ gha-ephemeral-runners/
 
 ## 🚀 Inicio Rápido
 
-### ⚡ Modo Automático
+### Modo Automático
 
 1. **Configurar variables obligatorias**:
    ```bash
@@ -90,17 +90,17 @@ gha-ephemeral-runners/
 
 ## ⚙️ Variables de Entorno
 
-### Obligatorias
+### Variables Obligatorias
 - `GITHUB_RUNNER_TOKEN`: Token de GitHub para gestión de runners
 - `REGISTRY`: URL de tu registry (localhost para desarrollo)
 - `IMAGE_VERSION`: Versión de imágenes (latest para desarrollo)
 - `RUNNER_IMAGE`: Imagen Docker para runners
 
-### Automatización
+### Configuración de Automatización
 - `AUTO_CREATE_RUNNERS`: Activar creación automática (true/false, default: false)
 - `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 300)
 
-### Variables de Entorno para Runners
+### Variables para Runners
 Las variables con prefijo `runnerenv_` se pasan automáticamente a los contenedores de runners:
 
 ```bash
@@ -119,7 +119,7 @@ runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
 - `{repo_owner}`, `{repo_name}`: Componentes del repositorio
 - `{timestamp}`, `{hostname}`, `{orchestrator_id}`: Sistema y tiempo
 
-## Comando Personalizado para Runners
+## 🔧 Comando Personalizado para Runners
 La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
@@ -127,7 +127,7 @@ La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un 
 RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | sed '/WARNING: Running pip as the.*root.*user/d' || true"
 ```
 
-### 🐳 Orden de Ejecución
+### Orden de Ejecución
 **ENTRYPOINT se ejecuta primero, RUNNER_COMMAND después:**
 
 1. **entrypoint.sh** → Configura y registra el runner
@@ -143,7 +143,7 @@ RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | s
 - **NAT**: Puede operar detrás de NAT sin puertos publicados
 - **Docker**: Engine 20.10+ con soporte para redes overlay
 
-### 🏷️ Gestión de Versiones
+### Gestión de Versiones
 
 Cada servicio tiene su propio archivo `version.py` como fuente primaria de verdad:
 
@@ -167,7 +167,7 @@ cd api-gateway && python -c "from version import __version__; print(f'API Gatewa
 cd orchestrator && python -c "from version import __version__; print(f'Orchestrator: {__version__}')"
 ```
 
-### 🚀 CI/CD Integrado
+### CI/CD Integrado
 
 El workflow inyecta automáticamente la versión en build time:
 
@@ -183,7 +183,7 @@ build-args: APP_VERSION=${{ github.ref_name }}
 
 ## 📊 Logging Estandarizado
 
-### 🎨 Sistema de Categorías
+### Sistema de Categorías
 
 El sistema usa categorías con emojis para consistencia en toda la arquitectura:
 
@@ -203,7 +203,7 @@ LOG_CATEGORIES = {
 }
 ```
 
-### 🔧 Middleware Optimizado
+### Middleware Optimizado
 
 - **Health checks internos**: Sin logs REQUEST/RESPONSE para reducir ruido
 - **Solicitudes externas**: Logging completo con formato estandarizado
@@ -220,7 +220,7 @@ LOG_CATEGORIES = {
 
 ## 🌐 Configuración de Redes y Proxy
 
-### Configuración con Nginx Proxy Manager
+### Configuración con Nginx
 
 Para despliegue en producción con dominio personalizado:
 
@@ -249,7 +249,7 @@ Una vez configurado:
 - **Documentación**: `https://gha.yourdomain.com/docs`
 - **Health Check**: `https://gha.yourdomain.com/health`
 
-### 🔄 Configurar Puerto Personalizado
+### Configuración de Puerto
 
 ```bash
 # Edita deploy/compose.yaml y cambia:
@@ -281,20 +281,20 @@ jobs:
 
 ## 🔑 Token de GitHub
 
-### 🔑 Scopes Requeridos
+### Scopes Requeridos
 
 - **`repo`** - Acceso completo a repositorios
 - **`admin:org`** - Administración de organización
 - **`workflow`** - Ejecutar workflows de GitHub Actions
 
-### 🔧 Creación del Token
+### Creación del Token
 
 1. **Ve a GitHub Settings** → Developer settings → Personal access tokens → Tokens (classic)
 2. **Generate New Token** → Note: "GHA Ephemeral Runners"
 3. **Seleccionar Scopes**: `repo`, `admin:org`, `workflow`
 4. **Generate y Copiar** el token inmediatamente
 
-### ⚙️ Configuración
+### Configuración
 
 ```bash
 # En deploy/.env
@@ -303,7 +303,7 @@ GITHUB_RUNNER_TOKEN=ghp_tu_personal_access_token_aqui
 
 ## 🤖 Modo Automático: Descubrimiento Inteligente
 
-### 🔄 ¿Cómo funciona?
+### Funcionamiento
 
 El sistema descubre automáticamente todos tus repositorios y crea runners cuando se necesitan:
 
@@ -361,7 +361,7 @@ sequenceDiagram
 
 ## 🔄 CI/CD y Build
 
-### Scripts de Build y Versión
+### Scripts de Build
 
 Cada servicio tiene sus propios scripts independientes:
 
@@ -391,7 +391,7 @@ cd orchestrator/scripts
 REGISTRY=myreg.com IMAGE_VERSION=1.2.0 ./build.sh
 ```
 
-### 🛠️ Comandos Útiles
+### Comandos Útiles
 
 ```bash
 # Crear release
