@@ -119,21 +119,15 @@ runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
 - `{repo_owner}`, `{repo_name}`: Componentes del repositorio
 - `{timestamp}`, `{hostname}`, `{orchestrator_id}`: Sistema y tiempo
 
-## Filtrado de Output para Runners
-La variable `RUNNER_FILTER_PATTERN` (del orquestador) permite filtrar mensajes no deseados del output del runner usando patrones Extended Regular Expressions (egrep -v -E) ([ver especificación](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap09.html#tag_09_04)):
+## Comando Personalizado para Runners
+La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
-# Un patrón específico
-RUNNER_FILTER_PATTERN=WARNING: Running pip as the.*root.*user
-
-# Múltiples patrones (separados por |)
-RUNNER_FILTER_PATTERN=WARNING.*pip.*root|DEBUG:|TRACE:
-
-# Sin filtrado (comportamiento normal)
-# RUNNER_FILTER_PATTERN=
+# Ejemplo de comando personalizado como workaround de actions/setup-python@v6
+RUNNER_COMMAND=sh -c "exec 2> >(sed \"/WARNING: Running pip as the.*root.*user/d\" >&2)"
 ```
 
-**Nota**: Variable del orquestador, no se pasa al runner.
+**Nota**: Variable del orquestador que reemplaza directamente el CMD del contenedor con el comando especificado, permitiendo cualquier tipo de modificación o comportamiento personalizado.
 
 ## 🌐 Requisitos de Infraestructura
 

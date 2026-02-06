@@ -60,11 +60,11 @@ class ContainerManager:
             security_opt.append('label:disable')
             logger.info(f"🐳 Habilitando Docker-in-Docker para {runner_name}")
 
-        # Configurar filtrado de output si está especificado
-        filter_pattern = os.getenv("RUNNER_FILTER_PATTERN")
-        if filter_pattern:
-            command = f'sh -c "exec 2>&1 | grep -v -E \\"{filter_pattern}\\""'
-            logger.info(f"🔍 Aplicando filtro: {filter_pattern}")
+        # Configurar comando inyectado si está especificado
+        injected_command = os.getenv("RUNNER_COMMAND")
+        if injected_command:
+            command = injected_command
+            logger.info(f"🔍 Aplicando comando: {injected_command}")
         else:
             command = None
 
