@@ -48,13 +48,14 @@ gha-ephemeral-runners/
 │   ├── docker/               # Dockerfile y healthcheck
 │   ├── scripts/              # Scripts del servicio
 │   ├── src/                  # Código fuente
+│   ├── docs/                 # Documentación del servicio
 │   └── version.py           # Versión del servicio
 ├── orchestrator/              # Servicio Orchestrator (8000)
 │   ├── docker/               # Dockerfile y healthcheck
 │   ├── scripts/              # Scripts del servicio
 │   ├── src/                  # Código fuente
 │   └── version.py           # Versión del servicio
-├── .github/workflows/         # CI/CD automatizado
+├── LICENSE                    # Licencia MIT
 └── README.md                  # Documentación
 ```
 
@@ -99,6 +100,24 @@ gha-ephemeral-runners/
 ### Configuración de Automatización
 - `AUTO_CREATE_RUNNERS`: Activar creación automática (true/false, default: false)
 - `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 300)
+- `RUNNER_PURGE_INTERVAL`: Intervalo de purga de runners inactivos (default: 300)
+- `DISCOVERY_MODE`: Modo de descubrimiento (all/organization, default: all)
+
+### Configuración de Logging
+- `LOG_LEVEL`: Nivel de logging (DEBUG/INFO/WARNING/ERROR/CRITICAL, default: INFO)
+- `LOG_VERBOSE`: Modo verbose con detalles adicionales (true/false, default: false)
+
+### Configuración de Puertos
+
+- `API_GATEWAY_PORT`: Puerto interno del API Gateway (default: 8080)
+- `ORCHESTRATOR_PORT`: Puerto interno del Orchestrator (default: 8000)
+
+**Nota**: Para cambiar puertos externos, modifica `deploy/compose.yaml`:
+```bash
+# Ejemplo: cambiar puerto host a 9000
+# ports:
+#   - "9000:8080"
+```
 
 ### Variables para Runners
 Las variables con prefijo `runnerenv_` se pasan automáticamente a los contenedores de runners:
@@ -138,33 +157,27 @@ RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | s
 
 ## 🌐 Requisitos de Infraestructura
 
-- **Puertos**: API Gateway (8080), Orchestrator (8000) - solo internos
+- **Puertos**: API Gateway (8080 expuesto), Orchestrator (8000 interno) - API Gateway accesible desde host, Orchestrator solo en red interna
 - **Proxy**: Requerido reverse proxy (nginx/traefik) para exposición pública
 - **NAT**: Puede operar detrás de NAT sin puertos publicados
 - **Docker**: Engine 20.10+ con soporte para redes overlay
 
-### Gestión de Versiones
+## 🔄 Gestión de Versiones y Build
 
-Cada servicio tiene su propio archivo `version.py` como fuente primaria de verdad:
+### Scripts de Build
 
-```python
-# api-gateway/version.py
-"""API Gateway Version Management"""
-__version__ = "1.1.0"
+Cada servicio tiene sus propios scripts independientes:
 
-# orchestrator/version.py  
-"""Orchestrator Version Management""
-__version__ = "1.1.0"
-```
-
-**Actualización automática:**
 ```bash
-# Actualizar todos los servicios a la vez
-python scripts/update-version.py 1.2.0
+# API Gateway
+cd api-gateway/scripts
+./build.sh [registry] [container_version]    # Build Docker - versión del contenedor
+./versioning.sh [api-gateway_version]         # Actualizar version.py - versión del servicio
 
-# Verificar versión actualizada
-cd api-gateway && python -c "from version import __version__; print(f'API Gateway: {__version__}')"
-cd orchestrator && python -c "from version import __version__; print(f'Orchestrator: {__version__}')"
+# Orchestrator  
+cd orchestrator/scripts
+./build.sh [registry] [container_version]    # Build Docker - versión del contenedor
+./versioning.sh [orchestrator_version]         # Actualizar version.py - versión del servicio
 ```
 
 ### CI/CD Integrado
@@ -180,6 +193,27 @@ build-args: APP_VERSION=${{ github.ref_name }}
 - **Docker labels**: `version=1.1.0` dinámico
 - **API responses**: Versión correcta en health checks
 - **Consistencia**: Mismo sistema en desarrollo y producción
+
+### Ejemplos de Uso
+
+```bash
+# Actualizar versiones
+cd api-gateway/scripts && ./versioning.sh 1.2.0
+cd orchestrator/scripts && ./versioning.sh 1.2.0
+
+# Build con defaults
+./build.sh
+
+# Build con valores específicos
+./build.sh myreg.com 1.2.0
+
+# Build con variables de entorno
+REGISTRY=myreg.com IMAGE_VERSION=1.2.0 ./build.sh
+
+# Crear release
+git tag v1.2.0
+git push origin v1.2.0
+```
 
 ## 📊 Logging Estandarizado
 
@@ -220,21 +254,60 @@ LOG_CATEGORIES = {
 
 ## 🌐 Configuración de Redes y Proxy
 
-### Configuración con Nginx
+### Exposición de Puertos
+
+El sistema expone únicamente el puerto del API Gateway:
+
+```bash
+# API Gateway: http://localhost:8080 (expuesto)
+# Orchestrator: http://orchestrator:8000 (solo red interna)
+```
+
+**Configuración de puertos:**
+```yaml
+# deploy/compose.yaml
+ports:
+  - "8080:8080"  # Solo API Gateway expuesto al host
+  # Orchestrator solo en red interna gha-network
+```
+
+**Nota**: El Orchestrator opera únicamente en la red interna `gha-network` y no es accesible desde el host. Para casos específicos, puedes usar la variable interna `ORCHESTRATOR_PORT` (default: 8000) para configuraciones personalizadas.
+
+### Uso Local y Acceso Interno (Desarrollo)
+
+Para desarrollo local o uso interno, acceso directo al API Gateway:
+
+```bash
+# Acceso directo sin proxy
+http://<IP>:8080
+
+# Para uso interno con puerto personalizado
+http://<IP>:9000  # Modificar deploy/compose.yaml
+```
+
+**Configuración para uso interno:**
+```yaml
+# Modificar deploy/compose.yaml para uso interno
+ports:
+  - "9000:8080"  # Puerto interno personalizado
+  # Sin exposición pública
+```
+
+### Configuración con Proxy (Producción)
 
 Para despliegue en producción con dominio personalizado:
 
-#### 1. Proxy Host
+**1. Proxy Host**
 - **Domain**: `gha.yourdomain.com`
 - **Scheme**: `http`
 - **Forward Hostname/IP**: `localhost`
 - **Forward Port**: `8080`
 
-#### 2. SSL Certificate
+**2. SSL Certificate**
 - Habilitar SSL Certificate
 - Seleccionar certificado Let's Encrypt
 
-#### 3. Configuración CORS
+**3. Configuración CORS**
 ```bash
 # En deploy/.env para producción con dominio específico
 CORS_ORIGINS=https://yourdomain.com
@@ -243,23 +316,21 @@ CORS_ORIGINS=https://yourdomain.com
 CORS_ORIGINS=*
 ```
 
-#### 4. URLs de Acceso
-Una vez configurado:
+## 🌐 Endpoints Disponibles
+
 - **API Gateway**: `https://gha.yourdomain.com`
-- **Documentación**: `https://gha.yourdomain.com/docs`
+- **API Docs**: `https://gha.yourdomain.com/docs` (Swagger/OpenAPI)
+- **ReDoc**: `https://gha.yourdomain.com/redoc` (documentación alternativa)
 - **Health Check**: `https://gha.yourdomain.com/health`
 
-### Configuración de Puerto
-
-```bash
-# Edita deploy/compose.yaml y cambia:
-# ports:
-#   - "9000:8080"  # Puerto host según necesites
-
-cd deploy
-docker compose up -d
-curl http://localhost:8080/health
-```
+**Endpoints principales del API Gateway:**
+- `GET /health` - Health check completo
+- `GET /docs` - Documentación Swagger/OpenAPI
+- `GET /redoc` - Documentación alternativa
+- `GET /runners` - Listar runners activos
+- `GET /runners/{id}` - Estado de runner específico
+- `POST /api/v1/runners` - Crear nuevo runner
+- `DELETE /api/v1/runners/{id}` - Destruir runner
 
 ## 🎯 Uso en Workflows
 
@@ -331,7 +402,7 @@ sequenceDiagram
     participant DOCKER as Docker
     participant RUN as Runner
 
-    Note over ORQ: Ciclo automático cada 60 segundos
+    Note over ORQ: Ciclo automático cada 300 segundos (configurable)
 
     rect rgb(30,58,138)
         ORQ->>GH: Obtener repositorios
@@ -358,50 +429,6 @@ sequenceDiagram
 - **Tokens temporales**: Registration tokens con expiración rápida
 - **Aislamiento**: Runners en contenedores Docker aislados
 - **Sin persistencia**: No se almacenan tokens sensibles
-
-## 🔄 CI/CD y Build
-
-### Scripts de Build
-
-Cada servicio tiene sus propios scripts independientes:
-
-```bash
-# API Gateway
-cd api-gateway/scripts
-./build.sh [registry] [version]    # Build Docker
-./versioning.sh [version]         # Actualizar version.py
-
-# Orchestrator  
-cd orchestrator/scripts
-./build.sh [registry] [version]    # Build Docker
-./versioning.sh [version]         # Actualizar version.py
-```
-
-**Ejemplos de uso:**
-```bash
-# Usar defaults (localhost, latest)
-./build.sh
-./versioning.sh
-
-# Especificar valores
-./build.sh myreg.com 1.2.0
-./versioning.sh 1.2.0
-
-# Con variables de entorno
-REGISTRY=myreg.com IMAGE_VERSION=1.2.0 ./build.sh
-```
-
-### Comandos Útiles
-
-```bash
-# Crear release
-git tag v1.2.0
-git push origin v1.2.0
-
-# Build local con scripts
-cd api-gateway/scripts && ./build.sh localhost 1.2.0
-cd orchestrator/scripts && ./build.sh localhost 1.2.0
-```
 
 ## 📄 Licencia
 
