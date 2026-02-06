@@ -319,7 +319,7 @@ jobs:
 ```
 
 ## 🔧 Comando Personalizado para Runners
-La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
+La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor. Permite usos creativos crear o ejecutar scripts desde un volumen montado en orchestrator.
 
 ```bash
 # Workaround para eliminar warning de pip en actions/setup-python
