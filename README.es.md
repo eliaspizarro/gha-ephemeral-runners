@@ -14,6 +14,23 @@ Plataforma para crear y destruir runners self-hosted de GitHub Actions de forma 
 ## 🏗️ Arquitectura
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#0d1117',
+    'primaryTextColor': '#c9d1d9',
+    'primaryBorderColor': '#30363d',
+    'lineColor': '#58a6ff',
+    'sectionBkgColor': '#0d1117',
+    'altSectionBkgColor': '#0d1117',
+    'gridColor': '#0d1117',
+    'secondaryColor': '#238636',
+    'tertiaryColor': '#0d1117',
+    'edgeLabelBackground': '#21262d',
+    'edgeLabelBorderColor': '#58a6ff',
+    'edgeLabelTextColor': '#c9d1d9'
+  }
+}}%%
 graph LR
     subgraph "Sistema Automático"
         AG[API Gateway:8080]
@@ -21,9 +38,9 @@ graph LR
         ORQ --> |Docker| RUN[Runner Efímero]
     end
 
-    style AG fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b
-    style ORQ fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c
-    style RUN fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#1b5e20
+    style AG fill:#0969da,stroke:#58a6ff,stroke-width:2px,color:#ffffff
+    style ORQ fill:#8957e5,stroke:#a371f7,stroke-width:2px,color:#ffffff
+    style RUN fill:#1a7f37,stroke:#238636,stroke-width:2px,color:#ffffff
 ```
 
 ### Componentes
@@ -330,6 +347,23 @@ RUNNER_COMMAND=bash -c "d=/tmp/h/ensurepip;mkdir -p $$d;printf '__all__=[\"boots
 **ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD del Dockerbuild.**
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#0d1117',
+    'primaryTextColor': '#c9d1d9',
+    'primaryBorderColor': '#30363d',
+    'lineColor': '#58a6ff',
+    'sectionBkgColor': '#0d1117',
+    'altSectionBkgColor': '#0d1117',
+    'gridColor': '#0d1117',
+    'secondaryColor': '#238636',
+    'tertiaryColor': '#0d1117',
+    'edgeLabelBackground': '#21262d',
+    'edgeLabelBorderColor': '#58a6ff',
+    'edgeLabelTextColor': '#c9d1d9'
+  }
+}}%%
 graph LR
     A[Inicio Contenedor] --> B[entrypoint.sh]
     B --> C[Configura runner]
@@ -347,12 +381,13 @@ graph LR
     I --> J[Fin del Job]
     J --> K[Destrucción Contenedor]
     
-    style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b
-    style B fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c
-    style E fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#1b5e20
-    style F fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#f57c00
-    style I fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b
-    style K fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c
+    style A fill:#0d1117,stroke:#30363d,stroke-width:2px,color:#c9d1d9
+    style B fill:#0d1117,stroke:#30363d,stroke-width:2px,color:#c9d1d9
+    style D fill:#d97f00,stroke:#fb8500,stroke-width:2px,color:#ffffff
+    style E fill:#1a7f37,stroke:#238636,stroke-width:2px,color:#ffffff
+    style F fill:#8957e5,stroke:#a371f7,stroke-width:2px,color:#ffffff
+    style I fill:#1a7f37,stroke:#238636,stroke-width:2px,color:#ffffff
+    style K fill:#0d1117,stroke:#30363d,stroke-width:2px,color:#c9d1d9
 ```
 
 **Notas**: 
@@ -407,17 +442,34 @@ El sistema descubre automáticamente todos tus repositorios y crea runners cuand
 
 ```mermaid
 %%{init: {
-  "theme": "dark",
-  "themeVariables": {
-    "fontFamily": "Inter, Segoe UI, Arial",
-    "fontSize": "14px",
-    "primaryTextColor": "#EAEAEA",
-    "lineColor": "#9CA3AF",
-    "noteTextColor": "#EAEAEA",
-    "noteBkgColor": "#1F2937",
-    "noteBorderColor": "#374151",
-    "actorBkg": "#020617",
-    "actorBorder": "#475569"
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#0d1117',
+    'primaryTextColor': '#c9d1d9',
+    'primaryBorderColor': '#30363d',
+    'lineColor': '#58a6ff',
+    'sectionBkgColor': '#0d1117',
+    'altSectionBkgColor': '#0d1117',
+    'gridColor': '#0d1117',
+    'secondaryColor': '#238636',
+    'tertiaryColor': '#0d1117',
+    'edgeLabelBackground': '#21262d',
+    'edgeLabelBorderColor': '#58a6ff',
+    'edgeLabelTextColor': '#c9d1d9',
+    'sequence': {
+      'actorBkg': '#21262d',
+      'actorBorder': '#58a6ff',
+      'actorTextColor': '#c9d1d9',
+      'actorLineHeight': '2px',
+      'signalColor': '#58a6ff',
+      'signalTextColor': '#c9d1d9',
+      'activationBkgColor': '#238636',
+      'activationBorderColor': '#1a7f37',
+      'noteBkgColor': '#0d1117',
+      'noteBorderColor': '#f85149',
+      'noteTextColor': '#c9d1d9',
+      'messageAlignment': 'center'
+    }
   }
 }}%%
 
@@ -431,20 +483,20 @@ sequenceDiagram
 
     Note over ORQ: Ciclo automático cada 300 segundos (configurable)
 
-    rect rgb(30,58,138)
+    rect rgb(9,105,218)
         ORQ->>GH: Obtener repositorios
         ORQ->>GH: Analizar workflows
         ORQ->>ORQ: Filtrar runs-on: self-hosted
         ORQ->>GH: Verificar jobs en cola
     end
 
-    rect rgb(11,58,74)
+    rect rgb(26,148,65)
         ORQ->>DOCKER: Crear runner si no hay disponible
         DOCKER->>RUN: Iniciar contenedor
         RUN->>GH: Registrarse como runner
     end
 
-    rect rgb(20,83,45)
+    rect rgb(217,70,239)
         GH->>RUN: Asignar job
         RUN->>RUN: Ejecutar workflow
         RUN->>DOCKER: Autodestruir runner
