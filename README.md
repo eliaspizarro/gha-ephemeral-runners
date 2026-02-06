@@ -322,8 +322,8 @@ jobs:
 La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
-# Solución para eliminar warning de pip en actions/setup-python
-RUNNER_COMMAND=bash -c "set -e; mkdir -p /tmp/hack/ensurepip; printf '%s\n' \"# Stub ensurepip injected by runner contrib\" \"__all__ = ['bootstrap']\" \"def bootstrap(*args, **kwargs):\" \"    return\" > /tmp/hack/ensurepip/__init__.py; printf '%s\n' \"# Stub __main__ for ensurepip\" \"import sys\" \"sys.exit(0)\" > /tmp/hack/ensurepip/__main__.py; PYTHONPATH=/tmp/hack exec ./bin/Runner.Listener run --startuptype service"
+# Workaround para eliminar warning de pip en actions/setup-python
+RUNNER_COMMAND=bash -c "d=/tmp/h/ensurepip;mkdir -p $$d;printf '__all__=[\"bootstrap\"]\ndef bootstrap(*a,**k):0'>$$d/__init__.py;printf 'import sys;sys.exit(0)'>$$d/__main__.py;PYTHONPATH=/tmp/h exec ./bin/Runner.Listener run --startuptype service"
 ```
 
 ### Orden de Ejecución
