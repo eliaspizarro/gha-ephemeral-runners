@@ -61,7 +61,7 @@ class ContainerManager:
             logger.info(f"🐳 Habilitando Docker-in-Docker para {runner_name}")
 
         # Configurar filtrado de output si está especificado
-        filter_pattern = os.getenv("FILTER_PATTERN", "")
+        filter_pattern = os.getenv("RUNNER_FILTER_PATTERN")
         if filter_pattern:
             command = f'sh -c "exec 2>&1 | grep -v -E \\"{filter_pattern}\\""'
             logger.info(f"🔍 Aplicando filtro: {filter_pattern}")

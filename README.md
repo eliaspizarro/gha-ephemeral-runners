@@ -120,17 +120,17 @@ runnerenv_LABELS=self-hosted,ephemeral,orchestrator-{hostname}
 - `{timestamp}`, `{hostname}`, `{orchestrator_id}`: Sistema y tiempo
 
 ## Filtrado de Output para Runners
-La variable `FILTER_PATTERN` (del orquestador) permite filtrar mensajes no deseados del output del runner usando patrones Extended Regular Expressions (egrep -v -E) ([ver especificación](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap09.html#tag_09_04)):
+La variable `RUNNER_FILTER_PATTERN` (del orquestador) permite filtrar mensajes no deseados del output del runner usando patrones Extended Regular Expressions (egrep -v -E) ([ver especificación](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap09.html#tag_09_04)):
 
 ```bash
 # Un patrón específico
-FILTER_PATTERN=WARNING: Running pip as the.*root.*user
+RUNNER_FILTER_PATTERN=WARNING: Running pip as the.*root.*user
 
 # Múltiples patrones (separados por |)
-FILTER_PATTERN=WARNING.*pip.*root|DEBUG:|TRACE:
+RUNNER_FILTER_PATTERN=WARNING.*pip.*root|DEBUG:|TRACE:
 
 # Sin filtrado (comportamiento normal)
-# FILTER_PATTERN=
+# RUNNER_FILTER_PATTERN=
 ```
 
 **Nota**: Variable del orquestador, no se pasa al runner.
