@@ -327,13 +327,54 @@ RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | s
 ```
 
 ### Orden de Ejecución
-**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND después:**
+**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD:**
 
-1. **entrypoint.sh** → Configura y registra el runner
-2. **RUNNER_COMMAND** → Se ejecuta con control total del proceso
-3. **GitHub Actions** → Se ejecuta dentro de nuestro comando
+### Orden de Ejecución
 
-**Nota**: Variable del orquestador que reemplaza directamente el CMD del contenedor con el comando especificado, permitiendo cualquier tipo de modificación o comportamiento personalizado.
+```mermaid
+%%{init: {
+  "theme": "dark",
+  "themeVariables": {
+    "fontFamily": "Inter, Segoe UI, Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#EAEAEA",
+    "lineColor": "#9CA3AF",
+    "noteTextColor": "#EAEAEA",
+    "noteBkgColor": "#1F2937",
+    "noteBorderColor": "#374151",
+    "actorBkg": "#020617",
+    "actorBorder": "#475569"
+  }
+}}%%
+
+flowchart TD
+    A[🚀 Inicio del Contenedor] --> B[📋 entrypoint.sh]
+    B --> C[⚙️ Configura y registra runner]
+    C --> D{🔍 ¿RUNNER_COMMAND?}
+    
+    D -->|Sí| E[🎯 RUNNER_COMMAND<br/><b>Sobrescribe CMD</b>]
+    D -->|No| F[📦 CMD por Defecto<br/>./bin/Runner.Listener run]
+    
+    E --> G[🔄 Procesos que tú definas<br/>ej. Runner.Listener, filtrado, etc.]
+    F --> H[🚀 Runner.Listener<br/>Ejecuta GitHub Actions]
+    
+    G --> I[🎭 GitHub Actions<br/>si incluyes Runner.Listener]
+    H --> I
+    
+    I --> J[✅ Fin del Job]
+    J --> K[🛑 Destrucción del Contenedor]
+    
+    style A fill:#10b981,stroke:#059669,color:#ffffff
+    style B fill:#3b82f6,stroke:#1d4ed8,color:#ffffff
+    style E fill:#f59e0b,stroke:#d97706,color:#ffffff
+    style F fill:#8b5cf6,stroke:#7c3aed,color:#ffffff
+    style I fill:#ef4444,stroke:#dc2626,color:#ffffff
+    style K fill:#6b7280,stroke:#4b5563,color:#ffffff
+```
+
+**Notas**: 
+- Variable del orquestador que reemplaza directamente el CMD del contenedor. Si no especificas RUNNER_COMMAND, se usa el CMD por defecto si existe.
+- El CMD por defecto de imagenes GitHub Actions Runners es `["./bin/Runner.Listener", "run", "--startuptype", "service"]`
 
 ## 📊 Logging Estandarizado
 
