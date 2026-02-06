@@ -98,7 +98,7 @@ gha-ephemeral-runners/
 
 ### Automatización
 - `AUTO_CREATE_RUNNERS`: Activar creación automática (true/false, default: false)
-- `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 60)
+- `RUNNER_CHECK_INTERVAL`: Intervalo de verificación en segundos (default: 300)
 
 ### Variables de Entorno para Runners
 Las variables con prefijo `runnerenv_` se pasan automáticamente a los contenedores de runners:
