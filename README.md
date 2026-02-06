@@ -322,8 +322,8 @@ jobs:
 La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un comando que reemplaza el CMD por defecto del contenedor:
 
 ```bash
-# Ejemplo para filtrar warning de pip en actions/setup-python
-RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | grep -v \"pip as the 'root' user\""
+# Solución para eliminar warning de pip en actions/setup-python
+RUNNER_COMMAND=bash -c "set -e; mkdir -p /tmp/hack/ensurepip; printf '%s\n' \"# Stub ensurepip injected by runner contrib\" \"__all__ = ['bootstrap']\" \"def bootstrap(*args, **kwargs):\" \"    return\" > /tmp/hack/ensurepip/__init__.py; printf '%s\n' \"# Stub __main__ for ensurepip\" \"import sys\" \"sys.exit(0)\" > /tmp/hack/ensurepip/__main__.py; PYTHONPATH=/tmp/hack exec ./bin/Runner.Listener run --startuptype service"
 ```
 
 ### Orden de Ejecución
@@ -375,7 +375,7 @@ flowchart TD
 - El **CMD por Defecto de GitHub Actions Runners**: `["./bin/Runner.Listener", "run", "--startuptype", "service"]`
 
 ### ⚠️ Nota sobre Warning de pip
-Los self-hosted runners pueden mostrar un warning sobre "Running pip as root" al usar `actions/setup-python@v5`. Este es un bug conocido que no afecta la funcionalidad.
+Los self-hosted runners pueden mostrar un warning sobre "Running pip as root" al usar `actions/setup-python@v*`. Este es un bug conocido que no afecta la funcionalidad.
 
 ## 📊 Logging Estandarizado
 
