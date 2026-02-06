@@ -36,7 +36,16 @@ async def lifespan(app: FastAPI):
     
     logger.info(format_log('INFO', 'Deteniendo servicio de orquestador'))
     orchestrator_service.stop_monitoring()
-    logger.info(format_log('SUCCESS', 'Servicio detenido'))
+    
+    # Purge completo de todos los runners al shutdown
+    logger.info(format_log('INFO', 'Eliminando todos los runners para evitar huérfanos'))
+    try:
+        result = orchestrator_service.lifecycle_manager.purge_all_runners()
+        logger.info(format_log('SUCCESS', f"Shutdown cleanup: {result['destroyed']}/{result['total']} runners eliminados"))
+    except Exception as e:
+        logger.error(f"❌ Error en shutdown cleanup: {e}")
+    
+    logger.info(format_log('SUCCESS', 'Servicio detenido completamente'))
 
 
 # Inicialización del servicio FastAPI

@@ -183,6 +183,45 @@ class LifecycleManager:
         
         return cleaned_count
 
+    def purge_all_runners(self) -> Dict[str, Any]:
+        """Elimina TODOS los runners sin importar su estado."""
+        logger.info(format_log('CONFIG', 'Iniciando purge completo de todos los runners'))
+        
+        # Obtener TODOS los runners activos en memoria
+        all_runner_ids = list(self.active_runners.keys())
+        total_runners = len(all_runner_ids)
+        
+        if total_runners == 0:
+            logger.info(format_log('INFO', 'No hay runners activos para eliminar'))
+            return {"total": 0, "destroyed": 0, "failed": 0}
+        
+        logger.info(format_log('INFO', f'Eliminando {total_runners} runners'))
+        
+        destroyed_count = 0
+        failed_count = 0
+        
+        # Eliminar cada runner sin verificar estado
+        for runner_id in all_runner_ids:
+            try:
+                # Usar destroy_runner existente (maneja cualquier estado)
+                if self.destroy_runner(runner_id):
+                    destroyed_count += 1
+                    logger.info(f"🗑️ Runner {runner_id} eliminado")
+                else:
+                    failed_count += 1
+                    logger.warning(f"⚠️ No se pudo eliminar runner {runner_id}")
+            except Exception as e:
+                failed_count += 1
+                logger.error(f"❌ Error eliminando runner {runner_id}: {e}")
+        
+        logger.info(format_log('SUCCESS', f'Purge completado: {destroyed_count}/{total_runners} runners eliminados'))
+        
+        return {
+            "total": total_runners,
+            "destroyed": destroyed_count,
+            "failed": failed_count
+        }
+
     def start_monitoring(self, cleanup_interval: int = 300):
         """Inicia el monitoreo automático de runners."""
         if self.monitoring:
