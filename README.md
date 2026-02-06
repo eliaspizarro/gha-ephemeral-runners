@@ -323,13 +323,11 @@ La variable `RUNNER_COMMAND` (del orquestador) permite inyectar directamente un 
 
 ```bash
 # Ejemplo para filtrar warning de pip en actions/setup-python
-RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | sed '/WARNING: Running pip as the.*root.*user/d' || true"
+RUNNER_COMMAND=bash -c "./bin/Runner.Listener run --startuptype service 2>&1 | grep -v \"pip as the 'root' user\""
 ```
 
 ### Orden de Ejecución
-**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD:**
-
-### Orden de Ejecución
+**ENTRYPOINT se ejecuta primero, RUNNER_COMMAND sobrescribe el CMD.**
 
 ```mermaid
 %%{init: {
@@ -374,7 +372,10 @@ flowchart TD
 
 **Notas**: 
 - Variable del orquestador que reemplaza directamente el CMD del contenedor. Si no especificas RUNNER_COMMAND, se usa el CMD por defecto si existe.
-- El CMD por defecto de imagenes GitHub Actions Runners es `["./bin/Runner.Listener", "run", "--startuptype", "service"]`
+- El **CMD por Defecto de GitHub Actions Runners**: `["./bin/Runner.Listener", "run", "--startuptype", "service"]`
+
+### ⚠️ Nota sobre Warning de pip
+Los self-hosted runners pueden mostrar un warning sobre "Running pip as root" al usar `actions/setup-python@v5`. Este es un bug conocido que no afecta la funcionalidad.
 
 ## 📊 Logging Estandarizado
 
