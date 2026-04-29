@@ -79,6 +79,7 @@ jobs:
     - name: Generate changelog
       id: changelog
       uses: requarks/changelog-action@v1
+      continue-on-error: true
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref_name }}
@@ -87,11 +88,13 @@ jobs:
         includeInvalidCommits: true
 
     - name: Create fallback changelog
-      if: steps.changelog.outputs.changes == ''
+      id: fallback
+      if: steps.changelog.outcome == 'failure' || steps.changelog.outputs.changes == ''
       run: |
-        echo "changes=No hay cambios convencionales desde la última versión. Ver todos los commits en [Comparación](https://github.com/${{ github.repository }}/compare/v${{ env.PREVIOUS_TAG }}...${{ github.ref_name }})" >> $GITHUB_OUTPUT
-      env:
-        PREVIOUS_TAG: ${{ steps.changelog.outputs.previousTag }}
+        # Obtener el tag anterior automáticamente
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v1.0.0")
+        echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+        echo "changes=No hay cambios convencionales desde la última versión. Ver todos los commits en [Comparación](https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ github.ref_name }})" >> $GITHUB_OUTPUT
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
