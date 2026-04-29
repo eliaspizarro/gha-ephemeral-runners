@@ -7,6 +7,7 @@ from functools import wraps
 
 import requests
 from src.core.container import ContainerManager
+from src.core.github_cleanup import GitHubRunnerCleanup
 from src.services.docker import DockerUtils
 from src.services.tokens import TokenGenerator
 from src.utils.helpers import format_log, setup_logger
@@ -30,6 +31,7 @@ class LifecycleManager:
     def __init__(self, github_runner_token: str, runner_image: str):
         self.token_generator = TokenGenerator(github_runner_token)
         self.container_manager = ContainerManager(runner_image)
+        self.github_cleanup = GitHubRunnerCleanup(github_runner_token)
         self.active_runners: Dict[str, Any] = {}
         self.runner_lock = threading.Lock()  # ← Bloqueo atómico para race conditions
         self.monitoring = False
@@ -181,7 +183,30 @@ class LifecycleManager:
         else:
             logger.info(format_log('SUCCESS', 'No hay runners para purgar'))
         
+        # Después de limpiar runners locales, limpiar runners offline de GitHub
+        self.cleanup_github_offline_runners()
+        
         return cleaned_count
+
+    def cleanup_github_offline_runners(self, dry_run: bool = False) -> Dict[str, int]:
+        """Limpia runners offline de GitHub API."""
+        try:
+            github_cleanup_enabled = os.getenv("GITHUB_CLEANUP_ENABLED", "false").lower() == "true"
+            
+            if not github_cleanup_enabled:
+                logger.debug("GitHub cleanup desactivado (GITHUB_CLEANUP_ENABLED=false)")
+                return {"total": 0, "cleaned": 0, "failed": 0}
+            
+            logger.info(format_log('CONFIG', 'Limpiando runners offline de GitHub'))
+            
+            # Limpiar runners de usuario
+            result = self.github_cleanup.cleanup_offline_runners("user", "", dry_run)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error en cleanup de GitHub: {e}")
+            return {"total": 0, "cleaned": 0, "failed": 0}
 
     def purge_all_runners(self) -> Dict[str, Any]:
         """Elimina TODOS los runners sin importar su estado."""
